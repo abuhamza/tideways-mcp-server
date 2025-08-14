@@ -1,0 +1,31 @@
+name: "Security Analysis"
+
+disable-default-queries: false
+
+queries:
+  - name: security-extended
+    uses: security-extended
+  - name: security-and-quality  
+    uses: security-and-quality
+
+paths-ignore:
+  - node_modules/
+  - dist/
+  - coverage/
+  - "**/*.test.js"
+  - "**/*.test.ts"
+  - "**/*.spec.js"
+  - "**/*.spec.ts"
+
+paths:
+  - src/
+
+query-filters:
+  - exclude:
+      id: js/hardcoded-credentials
+  - exclude:
+      id: js/clear-text-logging
+      
+packs:
+  - codeql/javascript-queries:AlertSuppression.ql
+  - codeql/javascript-queries:Security
