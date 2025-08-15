@@ -86,10 +86,6 @@ async function main() {
   
   try {
     const server = new TidewaysMCPServer();
-    
-    console.log('Starting Tideways MCP Server...');
-    console.log('Server is ready to receive MCP requests');
-    
     await server.start();
   } catch (error) {
     console.error('Error starting server:', error.message);
