@@ -17,6 +17,23 @@ export class TidewaysAPIError extends Error implements TidewaysError {
 }
 
 export class ErrorHandler {
+  static getJsonRpcErrorCode(error: TidewaysAPIError): number {
+    switch (error.category) {
+      case 'validation':
+        return -32602; // Invalid params
+      case 'auth':
+        return -32401; // Custom: Authentication error
+      case 'rate_limit':
+        return -32001; // Custom: Rate limit exceeded
+      case 'network':
+        return -32603; // Internal error
+      case 'api':
+        return -32603; // Internal error
+      default:
+        return -32603; // Internal error
+    }
+  }
+
   static handleApiError(error: any): TidewaysAPIError {
     logger.error('API error occurred', error, {
       url: error.config?.url,

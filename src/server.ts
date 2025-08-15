@@ -3,6 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 import { TidewaysClient } from './lib/tideways-client.js';
 import { logger } from './lib/logger.js';
@@ -64,14 +65,15 @@ export class TidewaysMCPServer {
         ? error 
         : ErrorHandler.handleApiError(error);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error: ${ErrorHandler.formatErrorForUser(tidewaysError)}`,
-          },
-        ],
-      };
+      throw new McpError(
+        ErrorHandler.getJsonRpcErrorCode(tidewaysError),
+        ErrorHandler.formatErrorForUser(tidewaysError),
+        { 
+          category: tidewaysError.category,
+          statusCode: tidewaysError.statusCode,
+          retryAfter: tidewaysError.retryAfter
+        }
+      );
       }
     });
   }
