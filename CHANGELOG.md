@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/abuhamza/tideways-mcp-server/compare/v1.0.1...v1.0.2) (2025-08-15)
+
+
+### Bug Fixes
+
+* standardize error codes and remove redundant logs from CLI server initialization ([8e83a1f](https://github.com/abuhamza/tideways-mcp-server/commit/8e83a1f39b5d1d424938390402b7a60ad633522b))
+
 ## [1.0.1](https://github.com/abuhamza/tideways-mcp-server/compare/v1.0.0...v1.0.1) (2025-08-14)
 
 # 1.0.0 (2025-08-14)
