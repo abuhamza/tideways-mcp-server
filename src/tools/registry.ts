@@ -16,18 +16,19 @@ type ToolHandler = (client: TidewaysClient, params: any) => Promise<string>;
 const TOOL_HANDLERS: Record<string, ToolHandler> = {
   get_performance_metrics: (client: TidewaysClient, params: GetPerformanceMetricsParams) =>
     handleGetPerformanceMetrics(client, params),
-  
+
   get_performance_summary: (client: TidewaysClient, params: GetPerformanceSummaryParams) =>
     handleGetPerformanceSummary(client, params),
-  
+
   get_issues: (client: TidewaysClient, params: GetIssuesParams) =>
     handleGetIssues(client, params),
-  
+
   get_traces: (client: TidewaysClient, params: GetTracesParams) =>
     handleGetTraces(client, params),
-  
+
   get_historical_data: (client: TidewaysClient, params: GetHistoricalDataParams) =>
     handleGetHistoricalData(client, params),
+
 };
 
 export async function executeTool(

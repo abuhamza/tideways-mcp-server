@@ -1,5 +1,5 @@
 import { TidewaysClient } from '../../lib/tideways-client.js';
-import { ErrorHandler } from '../../lib/errors.js';
+import { TidewaysAPIError, ErrorHandler } from '../../lib/errors.js';
 import { addDefaultDateRange } from '../../utils/date-utils.js';
 import { GetTracesParams } from '../../types/index.js';
 import { TRACE_CONFIG } from '../definitions.js';
@@ -34,6 +34,7 @@ export async function handleGetTraces(
 
     return JSON.stringify(tracesData, null, 2);
   } catch (error) {
+    if (error instanceof TidewaysAPIError) throw error;
     throw ErrorHandler.handleApiError(error);
   }
 }

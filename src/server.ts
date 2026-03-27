@@ -11,6 +11,9 @@ import { loadConfig, ServerConfig } from './config/index.js';
 import { ErrorHandler, TidewaysAPIError } from './lib/errors.js';
 import { getToolDefinitions } from './tools/definitions.js';
 import { executeTool } from './tools/registry.js';
+import packageJson from '../package.json' with { type: 'json' };
+
+const SERVER_VERSION: string = (packageJson as unknown as { version: string }).version;
 
 
 export class TidewaysMCPServer {
@@ -24,7 +27,7 @@ export class TidewaysMCPServer {
     this.server = new Server(
       {
         name: 'tideways-mcp-server',
-        version: '0.1.0',
+        version: SERVER_VERSION,
       },
       {
         capabilities: {
@@ -58,29 +61,29 @@ export class TidewaysMCPServer {
             },
           ],
         };
-          } catch (error) {
-      logger.error('Tool execution failed', error as Error, { toolName: name, arguments: args });
+      } catch (error) {
+        logger.error('Tool execution failed', error as Error, { toolName: name, arguments: args });
 
-      const tidewaysError: TidewaysAPIError = error instanceof TidewaysAPIError
-        ? error 
-        : ErrorHandler.handleApiError(error);
+        const tidewaysError: TidewaysAPIError = error instanceof TidewaysAPIError
+          ? error
+          : ErrorHandler.handleApiError(error);
 
-      throw new McpError(
-        ErrorHandler.getJsonRpcErrorCode(tidewaysError),
-        ErrorHandler.formatErrorForUser(tidewaysError),
-        { 
-          category: tidewaysError.category,
-          statusCode: tidewaysError.statusCode,
-          retryAfter: tidewaysError.retryAfter
-        }
-      );
+        throw new McpError(
+          ErrorHandler.getJsonRpcErrorCode(tidewaysError),
+          ErrorHandler.formatErrorForUser(tidewaysError),
+          {
+            category: tidewaysError.category,
+            statusCode: tidewaysError.statusCode,
+            retryAfter: tidewaysError.retryAfter
+          }
+        );
       }
     });
   }
 
   async start(): Promise<void> {
     logger.info('Starting Tideways MCP Server', {
-      version: '0.1.0',
+      version: SERVER_VERSION,
       organization: this.config.organization,
       project: this.config.project,
     });
@@ -109,6 +112,7 @@ export class TidewaysMCPServer {
 
   private async shutdown(): Promise<void> {
     logger.info('Shutting down Tideways MCP Server');
+    await this.server.close();
     process.exit(0);
   }
 

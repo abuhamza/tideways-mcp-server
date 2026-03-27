@@ -116,6 +116,44 @@ describe('Configuration Management', () => {
       const config = loadConfig();
       expect(config.token).toBe('any-token-format-works!@#$%');
     });
+
+    it('should default rateLimit to 2500', () => {
+      process.env.TIDEWAYS_TOKEN = 'validToken123456789';
+      process.env.TIDEWAYS_ORG = 'test-org';
+      process.env.TIDEWAYS_PROJECT = 'test-project';
+
+      const config = loadConfig();
+      expect(config.rateLimit).toBe(2500);
+    });
+
+    it('should override rateLimit via TIDEWAYS_RATE_LIMIT', () => {
+      process.env.TIDEWAYS_TOKEN = 'validToken123456789';
+      process.env.TIDEWAYS_ORG = 'test-org';
+      process.env.TIDEWAYS_PROJECT = 'test-project';
+      process.env.TIDEWAYS_RATE_LIMIT = '1000';
+
+      const config = loadConfig();
+      expect(config.rateLimit).toBe(1000);
+    });
+
+    it('should throw for rateLimit less than 1', () => {
+      process.env.TIDEWAYS_TOKEN = 'validToken123456789';
+      process.env.TIDEWAYS_ORG = 'test-org';
+      process.env.TIDEWAYS_PROJECT = 'test-project';
+      process.env.TIDEWAYS_RATE_LIMIT = '0';
+
+      expect(() => loadConfig()).toThrow('rateLimit must be at least 1');
+    });
+
+    it('should fall back to default rateLimit for non-numeric TIDEWAYS_RATE_LIMIT', () => {
+      process.env.TIDEWAYS_TOKEN = 'validToken123456789';
+      process.env.TIDEWAYS_ORG = 'test-org';
+      process.env.TIDEWAYS_PROJECT = 'test-project';
+      process.env.TIDEWAYS_RATE_LIMIT = 'abc';
+
+      const config = loadConfig();
+      expect(config.rateLimit).toBe(2500);
+    });
   });
 
 });

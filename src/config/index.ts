@@ -1,5 +1,6 @@
 import { config } from 'dotenv';
 import { TidewaysConfig } from '../types/index.js';
+import { logger } from '../lib/logger.js';
 
 config();
 
@@ -12,6 +13,7 @@ const DEFAULT_CONFIG: Partial<ServerConfig> = {
   maxRetries: 3,
   requestTimeout: 30000,
   port: 3000,
+  rateLimit: 2500,
 };
 
 export function loadConfig(): ServerConfig {
@@ -26,13 +28,24 @@ export function loadConfig(): ServerConfig {
     config.baseUrl = process.env.TIDEWAYS_BASE_URL;
   }
   if (process.env.TIDEWAYS_MAX_RETRIES) {
-    config.maxRetries = parseInt(process.env.TIDEWAYS_MAX_RETRIES, 10);
+    const v = parseInt(process.env.TIDEWAYS_MAX_RETRIES, 10);
+    if (!Number.isNaN(v)) config.maxRetries = v;
+    else logger.warn('TIDEWAYS_MAX_RETRIES is not a valid integer, using default');
   }
   if (process.env.TIDEWAYS_REQUEST_TIMEOUT) {
-    config.requestTimeout = parseInt(process.env.TIDEWAYS_REQUEST_TIMEOUT, 10);
+    const v = parseInt(process.env.TIDEWAYS_REQUEST_TIMEOUT, 10);
+    if (!Number.isNaN(v)) config.requestTimeout = v;
+    else logger.warn('TIDEWAYS_REQUEST_TIMEOUT is not a valid integer, using default');
   }
   if (process.env.SERVER_PORT) {
-    config.port = parseInt(process.env.SERVER_PORT, 10);
+    const v = parseInt(process.env.SERVER_PORT, 10);
+    if (!Number.isNaN(v)) config.port = v;
+    else logger.warn('SERVER_PORT is not a valid integer, using default');
+  }
+  if (process.env.TIDEWAYS_RATE_LIMIT) {
+    const v = parseInt(process.env.TIDEWAYS_RATE_LIMIT, 10);
+    if (!Number.isNaN(v)) config.rateLimit = v;
+    else logger.warn('TIDEWAYS_RATE_LIMIT is not a valid integer, using default');
   }
 
   validateConfig(config);
@@ -60,6 +73,9 @@ function validateConfig(config: ServerConfig): void {
   }
   if (config.port && (config.port < 1 || config.port > 65535)) {
     errors.push('port must be between 1 and 65535');
+  }
+  if (config.rateLimit !== undefined && config.rateLimit < 1) {
+    errors.push('rateLimit must be at least 1');
   }
 
   if (errors.length > 0) {

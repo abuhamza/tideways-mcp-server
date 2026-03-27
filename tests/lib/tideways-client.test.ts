@@ -47,7 +47,7 @@ describe('TidewaysClient', () => {
         headers: {
           Authorization: `Bearer ${mockConfig.token}`,
           'Content-Type': 'application/json',
-          'User-Agent': 'Tideways-MCP-Server/0.1.0',
+          'User-Agent': expect.stringMatching(/^Tideways-MCP-Server\/\d+\.\d+\.\d+$/),
         },
       });
     });

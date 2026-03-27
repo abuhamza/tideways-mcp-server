@@ -5,4 +5,5 @@ export interface TidewaysConfig {
   baseUrl?: string;
   maxRetries?: number;
   requestTimeout?: number;
+  rateLimit?: number;
 }

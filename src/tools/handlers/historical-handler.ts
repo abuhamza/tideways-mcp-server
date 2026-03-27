@@ -1,5 +1,5 @@
 import { TidewaysClient } from '../../lib/tideways-client.js';
-import { ErrorHandler } from '../../lib/errors.js';
+import { TidewaysAPIError, ErrorHandler } from '../../lib/errors.js';
 import { GetHistoricalDataParams } from '../../types/index.js';
 export async function handleGetHistoricalData(
   client: TidewaysClient,
@@ -10,6 +10,7 @@ export async function handleGetHistoricalData(
     const historicalData = await client.getHistoricalData(date, granularity);
     return JSON.stringify(historicalData, null, 2);
   } catch (error) {
+    if (error instanceof TidewaysAPIError) throw error;
     throw ErrorHandler.handleApiError(error);
   }
 }

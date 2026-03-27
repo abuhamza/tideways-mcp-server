@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import packageJson from '../../package.json' with { type: 'json' };
 import {
   TidewaysConfig,
   TidewaysPerformanceData,
@@ -8,16 +9,20 @@ import {
   TidewaysHistoryResponse,
   GetPerformanceMetricsParams,
   GetPerformanceSummaryParams,
+  GetTracesParams,
+  GetIssuesParams,
 } from '../types/index.js';
 import { ErrorHandler, TidewaysAPIError } from './errors.js';
 import { logger } from './logger.js';
+
+const CLIENT_VERSION: string = (packageJson as unknown as { version: string }).version;
 
 class RateLimiter {
   private requests: number[] = [];
   private maxRequests: number;
   private windowMs: number;
 
-  constructor(maxRequests = 900, windowMs = 3600000) {
+  constructor(maxRequests = 2500, windowMs = 3600000) {
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
   }
@@ -54,7 +59,7 @@ export class TidewaysClient {
 
   constructor(config: TidewaysConfig) {
     this.config = config;
-    this.rateLimiter = new RateLimiter();
+    this.rateLimiter = new RateLimiter(config.rateLimit);
 
     this.client = axios.create({
       baseURL: config.baseUrl,
@@ -62,7 +67,7 @@ export class TidewaysClient {
       headers: {
         Authorization: `Bearer ${config.token}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'Tideways-MCP-Server/0.1.0',
+        'User-Agent': `Tideways-MCP-Server/${CLIENT_VERSION}`,
       },
     });
 
@@ -189,11 +194,7 @@ export class TidewaysClient {
     return this.fetch<TidewaysPerformanceSummaryData>(endpoint, apiParams);
   }
 
-  async getIssues(params?: {
-    issue_type?: string;
-    status?: string;
-    page?: number;
-  }): Promise<TidewaysIssuesResponse> {
+  async getIssues(params?: GetIssuesParams): Promise<TidewaysIssuesResponse> {
     const apiParams: Record<string, any> = {
       status: params?.status || 'open',
       page: params?.page || 1,
@@ -207,22 +208,11 @@ export class TidewaysClient {
     return this.fetch<TidewaysIssuesResponse>(endpoint, apiParams);
   }
 
-  async getTraces(params?: {
-    env?: string;
-    s?: string;
-    transaction_name?: string;
-    has_callgraph?: boolean;
-    search?: string;
-    min_date?: string;
-    max_date?: string;
-    min_response_time_ms?: number;
-    max_response_time_ms?: number;
-    sort_by?: string;
-    sort_order?: string;
-  }): Promise<TidewaysTracesResponse> {
+  async getTraces(params?: GetTracesParams): Promise<TidewaysTracesResponse> {
     const endpoint = `/${this.config.organization}/${this.config.project}/traces`;
     return this.fetch<TidewaysTracesResponse>(endpoint, params);
   }
+
 
   async getHistoricalData(date: string, granularity: string = 'day'): Promise<TidewaysHistoryResponse> {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;

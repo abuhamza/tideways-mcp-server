@@ -18,9 +18,9 @@ A Model Context Protocol (MCP) server that enables AI assistants to query [Tidew
 
 - **Conversational Performance Insights**: Get performance data in natural language format optimized for AI assistants
 - **AI Assistant Integration**: Works with Claude Desktop, Cursor, Claude Code, and other MCP-compatible tools
-- **Real-time Performance Metrics**: Query current performance data with intelligent rate limiting
+- **Real-time Performance Metrics**: Query current performance data with configurable rate limiting
+- **Trace Analysis**: List and filter traces with layer breakdown, bottleneck detection, and response time analysis
 - **Issue Analysis**: Retrieve and analyze errors, exceptions, and performance issues
-- **Intelligent API Management**: Built-in rate limiting with respect for Tideways API constraints
 - **Robust Error Handling**: Comprehensive error handling with user-friendly messages
 
 **Package Information:**
@@ -49,6 +49,7 @@ The server integrates with AI assistants through MCP configuration using the npm
 | `TIDEWAYS_ORG` | ✅ | - | Tideways organization name |
 | `TIDEWAYS_PROJECT` | ✅ | - | Tideways project name |
 | `TIDEWAYS_BASE_URL` | ❌ | `https://app.tideways.io/apps/api` | Tideways API base URL |
+| `TIDEWAYS_RATE_LIMIT` | ❌ | `2500` | API requests per hour — match to your plan (Team/Pro: 2500, Standard: 1000, Basic: 250) |
 | `TIDEWAYS_MAX_RETRIES` | ❌ | `3` | Maximum API retry attempts |
 | `TIDEWAYS_REQUEST_TIMEOUT` | ❌ | `30000` | API request timeout (ms) |
 | `LOG_LEVEL` | ❌ | `info` | Log level (debug, info, warn, error) |

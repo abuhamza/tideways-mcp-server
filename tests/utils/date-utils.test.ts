@@ -9,11 +9,18 @@ describe('Date Utils', () => {
       expect(result.env).toBe('production');
       expect(result.min_date).toBeDefined();
       expect(result.max_date).toBeDefined();
-      expect(result.min_date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-      expect(result.max_date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-      
-      const minTime = new Date(result.min_date!).getTime();
-      const maxTime = new Date(result.max_date!).getTime();
+      expect(result.min_date).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+      expect(result.max_date).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+
+      // Parse Y-m-d H:i format back to Date for time diff check
+      const parseApiDate = (s: string) => {
+        const [datePart, timePart] = s.split(' ');
+        const [y, m, d] = datePart.split('-').map(Number);
+        const [h, min] = timePart.split(':').map(Number);
+        return new Date(y, m - 1, d, h, min);
+      };
+      const minTime = parseApiDate(result.min_date!).getTime();
+      const maxTime = parseApiDate(result.max_date!).getTime();
       const diffHours = (maxTime - minTime) / (1000 * 60 * 60);
       
       expect(diffHours).toBeCloseTo(24, 0);

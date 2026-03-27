@@ -1,5 +1,5 @@
 import { TidewaysClient } from '../../lib/tideways-client.js';
-import { ErrorHandler } from '../../lib/errors.js';
+import { TidewaysAPIError, ErrorHandler } from '../../lib/errors.js';
 import { GetPerformanceMetricsParams } from '../../types/index.js';
 export async function handleGetPerformanceMetrics(
   client: TidewaysClient,
@@ -9,6 +9,7 @@ export async function handleGetPerformanceMetrics(
     const performanceData = await client.getPerformanceMetrics(params);
     return JSON.stringify(performanceData, null, 2);
   } catch (error) {
+    if (error instanceof TidewaysAPIError) throw error;
     throw ErrorHandler.handleApiError(error);
   }
 }
