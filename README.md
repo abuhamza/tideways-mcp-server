@@ -18,8 +18,10 @@ A Model Context Protocol (MCP) server that enables AI assistants to query [Tidew
 
 - **Conversational Performance Insights**: Get performance data in natural language format optimized for AI assistants
 - **AI Assistant Integration**: Works with Claude Desktop, Cursor, Claude Code, and other MCP-compatible tools
+- **Token Capability Discovery**: Validate Tideways token scopes and accessible projects before configuring project-scoped tools
 - **Real-time Performance Metrics**: Query current performance data with intelligent rate limiting
 - **Issue Analysis**: Retrieve and analyze errors, exceptions, and performance issues
+- **Observations**: Retrieve Tideways observations for configuration and code-level bottleneck hints
 - **Intelligent API Management**: Built-in rate limiting with respect for Tideways API constraints
 - **Robust Error Handling**: Comprehensive error handling with user-friendly messages
 
@@ -46,16 +48,58 @@ The server integrates with AI assistants through MCP configuration using the npm
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `TIDEWAYS_TOKEN` | ✅ | - | Tideways API access token (see Security section) |
-| `TIDEWAYS_ORG` | ✅ | - | Tideways organization name |
-| `TIDEWAYS_PROJECT` | ✅ | - | Tideways project name |
+| `TIDEWAYS_ORG` | Project tools only | - | Tideways organization name |
+| `TIDEWAYS_PROJECT` | Project tools only | - | Tideways project name |
 | `TIDEWAYS_BASE_URL` | ❌ | `https://app.tideways.io/apps/api` | Tideways API base URL |
 | `TIDEWAYS_MAX_RETRIES` | ❌ | `3` | Maximum API retry attempts |
 | `TIDEWAYS_REQUEST_TIMEOUT` | ❌ | `30000` | API request timeout (ms) |
 | `LOG_LEVEL` | ❌ | `info` | Log level (debug, info, warn, error) |
 
+`TIDEWAYS_TOKEN` alone is enough to start the server and call `get_token_capabilities`. Project-scoped tools such as `get_performance_metrics`, `get_issues`, `get_observations`, `get_traces`, and `get_historical_data` require both `TIDEWAYS_ORG` and `TIDEWAYS_PROJECT`.
+
 ## AI Assistant Integration
 
 **This server only works with MCP-compatible AI assistants. It uses stdio transport.**
+
+#### OpenCode Local Fork
+
+For this local checkout, build the server first:
+
+```bash
+npm run build
+```
+
+Then add this MCP server to your project-level `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "tideways": {
+      "type": "local",
+      "command": ["node", "/home/nhp/projects/dev/nhp/tideways-mcp/dist/index.js"],
+      "enabled": true,
+      "environment": {
+        "TIDEWAYS_TOKEN": "{env:TIDEWAYS_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Use `get_token_capabilities` first to verify the token and discover accessible projects. After selecting a project, add project-scoped environment variables:
+
+```json
+{
+  "environment": {
+    "TIDEWAYS_TOKEN": "{env:TIDEWAYS_TOKEN}",
+    "TIDEWAYS_ORG": "your_org",
+    "TIDEWAYS_PROJECT": "your_project"
+  }
+}
+```
+
+Do not commit real Tideways tokens. Keep tokens in your shell environment or another gitignored secret source and reference them through `{env:TIDEWAYS_TOKEN}`.
 
 #### Claude Desktop
 
@@ -173,6 +217,21 @@ Once configured, you can ask your AI assistant questions like:
 
 All tools return structured JSON data for optimal AI assistant integration. The MCP server follows a "raw JSON approach" where tools return complete API responses without formatting, allowing AI assistants to analyze and present data flexibly.
 
+### `get_token_capabilities`
+
+Retrieve the configured Tideways token scopes and accessible projects.
+
+**Parameters:** None
+
+**Conversational Examples:**
+```
+"Which Tideways projects can this token access?"
+"Validate my Tideways MCP credentials"
+"Show me the scopes available for this Tideways token"
+```
+
+**Returns:** Raw Tideways token metadata including granted scopes and accessible project names/licenses.
+
 ### `get_performance_metrics`
 
 Retrieve aggregate performance metrics and system-wide statistics.
@@ -232,6 +291,23 @@ Retrieve and analyze recent errors, exceptions, and performance issues.
 ```
 
 **Returns:** Detailed error information including stack traces, occurrence frequency, affected endpoints, and suggested fixes for common issues.
+
+### `get_observations`
+
+Retrieve Tideways observations for configuration and code-level bottleneck hints.
+
+**Parameters:**
+- `env` (optional): Environment name (default: "production")
+- `s` (optional): Service name (default: "web")
+
+**Conversational Examples:**
+```
+"Show Tideways observations for production"
+"What configuration bottleneck hints does Tideways report?"
+"Get observations for the API service in staging"
+```
+
+**Returns:** Raw Tideways observations including type, source, label, status, documentation links, app links, origins, and criteria.
 
 ### `get_traces`
 
