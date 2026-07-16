@@ -45,13 +45,6 @@ function validateConfig(config: ServerConfig): void {
   if (!config.token) {
     errors.push('TIDEWAYS_TOKEN environment variable is required');
   }
-  if (!config.organization) {
-    errors.push('TIDEWAYS_ORG environment variable is required');
-  }
-  if (!config.project) {
-    errors.push('TIDEWAYS_PROJECT environment variable is required');
-  }
-
   if (config.maxRetries && (config.maxRetries < 0 || config.maxRetries > 10)) {
     errors.push('maxRetries must be between 0 and 10');
   }
@@ -66,4 +59,3 @@ function validateConfig(config: ServerConfig): void {
     throw new Error(`Configuration validation failed:\n${errors.join('\n')}`);
   }
 }
-

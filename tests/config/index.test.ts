@@ -59,7 +59,10 @@ describe('Configuration Management', () => {
       delete process.env.TIDEWAYS_ORG;
       process.env.TIDEWAYS_PROJECT = 'test-project';
 
-      expect(() => loadConfig()).toThrow('TIDEWAYS_ORG environment variable is required');
+      const config = loadConfig();
+
+      expect(config.organization).toBe('');
+      expect(config.project).toBe('test-project');
     });
 
     it('should throw error for missing project', () => {
@@ -67,7 +70,22 @@ describe('Configuration Management', () => {
       process.env.TIDEWAYS_ORG = 'test-org';
       delete process.env.TIDEWAYS_PROJECT;
 
-      expect(() => loadConfig()).toThrow('TIDEWAYS_PROJECT environment variable is required');
+      const config = loadConfig();
+
+      expect(config.organization).toBe('test-org');
+      expect(config.project).toBe('');
+    });
+
+    it('should load token-only configuration for capability discovery', () => {
+      process.env.TIDEWAYS_TOKEN = 'validToken123456789';
+      delete process.env.TIDEWAYS_ORG;
+      delete process.env.TIDEWAYS_PROJECT;
+
+      const config = loadConfig();
+
+      expect(config.token).toBe('validToken123456789');
+      expect(config.organization).toBe('');
+      expect(config.project).toBe('');
     });
 
     it('should validate numeric values', () => {

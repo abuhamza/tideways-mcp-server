@@ -2,19 +2,19 @@ import { formatDateForAPI, addDefaultDateRange } from '../src/utils/date-utils.j
 
 describe('Server Core Functionality', () => {
   describe('formatDateForAPI', () => {
-    it('should format date correctly for API (ISO 8601)', () => {
-      const date = new Date('2025-08-10T14:30:00Z');
+    it('should format date correctly for Tideways API', () => {
+      const date = new Date(2025, 7, 10, 14, 30);
       const result = formatDateForAPI(date);
       
-      expect(result).toBe('2025-08-10T14:30:00.000Z');
-      expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      expect(result).toBe('2025-08-10 14:30');
+      expect(result).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
     });
 
-    it('should handle different timezones correctly', () => {
-      const date = new Date('2025-01-05T09:05:30.123Z');
+    it('should pad single-digit date parts', () => {
+      const date = new Date(2025, 0, 5, 9, 5);
       const result = formatDateForAPI(date);
       
-      expect(result).toBe('2025-01-05T09:05:30.123Z');
+      expect(result).toBe('2025-01-05 09:05');
     });
   });
 
@@ -27,13 +27,13 @@ describe('Server Core Functionality', () => {
       expect(result.min_date).toBeDefined();
       expect(result.max_date).toBeDefined();
       
-      expect(result.min_date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-      expect(result.max_date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      expect(result.min_date).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+      expect(result.max_date).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
       
-      const minDate = new Date(result.min_date!);
-      const maxDate = new Date(result.max_date!);
+      const minDate = new Date(result.min_date!.replace(' ', 'T'));
+      const maxDate = new Date(result.max_date!.replace(' ', 'T'));
       
-      expect(maxDate.getTime()).toBeGreaterThanOrEqual(beforeCall.getTime() - 1000);
+      expect(maxDate.getTime()).toBeGreaterThanOrEqual(beforeCall.getTime() - 60000);
       expect(maxDate.getTime()).toBeLessThanOrEqual(afterCall.getTime() + 1000);
       
       const diffHours = (maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60);
@@ -58,14 +58,14 @@ describe('Server Core Functionality', () => {
 
     it('should not add defaults when dates are already provided', () => {
       const params = {
-        min_date: '2025-08-01T10:00:00Z',
-        max_date: '2025-08-01T12:00:00Z'
+        min_date: '2025-08-01 10:00',
+        max_date: '2025-08-01 12:00'
       };
       
       const result = addDefaultDateRange(params);
       
-      expect(result.min_date).toBe('2025-08-01T10:00:00Z');
-      expect(result.max_date).toBe('2025-08-01T12:00:00Z');
+      expect(result.min_date).toBe('2025-08-01 10:00');
+      expect(result.max_date).toBe('2025-08-01 12:00');
     });
 
     it('should preserve other trace parameters', () => {

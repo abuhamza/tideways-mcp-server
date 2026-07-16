@@ -35,6 +35,10 @@ export class ErrorHandler {
   }
 
   static handleApiError(error: any): TidewaysAPIError {
+    if (error instanceof TidewaysAPIError) {
+      return error;
+    }
+
     logger.error('API error occurred', error, {
       url: error.config?.url,
       method: error.config?.method,

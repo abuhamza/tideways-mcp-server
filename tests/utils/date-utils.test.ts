@@ -9,8 +9,8 @@ describe('Date Utils', () => {
       expect(result.env).toBe('production');
       expect(result.min_date).toBeDefined();
       expect(result.max_date).toBeDefined();
-      expect(result.min_date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-      expect(result.max_date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      expect(result.min_date).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+      expect(result.max_date).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
       
       const minTime = new Date(result.min_date!).getTime();
       const maxTime = new Date(result.max_date!).getTime();

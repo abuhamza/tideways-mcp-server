@@ -23,6 +23,14 @@ jest.mock('../../src/tools/handlers/historical-handler.js', () => ({
   handleGetHistoricalData: jest.fn().mockResolvedValue('Historical data result'),
 }));
 
+jest.mock('../../src/tools/handlers/token-capabilities-handler.js', () => ({
+  handleGetTokenCapabilities: jest.fn().mockResolvedValue('Token capabilities data'),
+}));
+
+jest.mock('../../src/tools/handlers/observations-handler.js', () => ({
+  handleGetObservations: jest.fn().mockResolvedValue('Observations data'),
+}));
+
 
 describe('Tool Registry', () => {
   describe('executeTool', () => {
@@ -49,6 +57,16 @@ describe('Tool Registry', () => {
     it('should execute historical data tool', async () => {
       const historicalResult = await executeTool('get_historical_data', { date: '2025-08-10' }, mockClient);
       expect(historicalResult).toBe('Historical data result');
+    });
+
+    it('should execute token capabilities tool', async () => {
+      const result = await executeTool('get_token_capabilities', {}, mockClient);
+      expect(result).toBe('Token capabilities data');
+    });
+
+    it('should execute observations tool', async () => {
+      const result = await executeTool('get_observations', { env: 'production', s: 'web' }, mockClient);
+      expect(result).toBe('Observations data');
     });
     
 

@@ -250,6 +250,84 @@ describe('TidewaysClient', () => {
     });
   });
 
+  describe('getTokenCapabilities', () => {
+    it('should fetch token capabilities successfully', async () => {
+      const mockResponse = {
+        scopes: ['metrics', 'traces', 'issues'],
+        projects: [
+          { name: 'test-org/test-project', license: 'pro' },
+        ],
+      };
+      mockAxiosInstance.get.mockResolvedValue({ data: mockResponse });
+
+      const result = await client.getTokenCapabilities();
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/_token', { params: undefined });
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('getObservations', () => {
+    const mockResponse = {
+      observations: [
+        {
+          type: 'php.extension',
+          source: 'tideways',
+          label: 'Install ext-tideways',
+          status: 'open',
+          doc_link: 'https://support.tideways.com/',
+          app_link: 'https://app.tideways.io/',
+          origins: ['app'],
+        },
+      ],
+      criteria: {
+        environment: 'production',
+        service: 'web',
+      },
+    };
+
+    it('should fetch observations with default environment and service', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: mockResponse });
+
+      const result = await client.getObservations();
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/test-org/test-project/observations', {
+        params: {
+          env: 'production',
+          s: 'web',
+        },
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should fetch observations with custom environment and service', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: mockResponse });
+
+      const result = await client.getObservations({ env: 'staging', s: 'api' });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/test-org/test-project/observations', {
+        params: {
+          env: 'staging',
+          s: 'api',
+        },
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should reject project-scoped calls without organization and project', async () => {
+      const tokenOnlyClient = new TidewaysClient({
+        ...mockConfig,
+        organization: '',
+        project: '',
+      });
+
+      await expect(tokenOnlyClient.getObservations()).rejects.toThrow(
+        'TIDEWAYS_ORG and TIDEWAYS_PROJECT are required for project-scoped Tideways API calls'
+      );
+      expect(mockAxiosInstance.get).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getHistoricalData', () => {
     it('should fetch historical data successfully', async () => {
       const mockResponse = { data: 'historical-data' };
@@ -286,7 +364,7 @@ describe('TidewaysClient', () => {
 
       const result = await client.healthCheck();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/_token');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/_token', { params: undefined });
       expect(result.status).toBe('healthy');
       expect(result.message).toContain('Successfully connected');
     });

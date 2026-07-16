@@ -20,6 +20,11 @@ export interface GetHistoricalDataParams {
   granularity?: 'day' | 'week' | 'month';
 }
 
+export interface GetObservationsParams {
+  env?: string; // Environment name (e.g., "production")
+  s?: string; // Service name (e.g., "web")
+}
+
 export interface GetTracesParams {
   env?: string; // Environment name (e.g., "production")
   s?: string; // Service name (e.g., "web")
@@ -33,4 +38,3 @@ export interface GetTracesParams {
   sort_by?: 'response_time' | 'date' | 'memory'; // Sort field
   sort_order?: 'ASC' | 'DESC'; // Sort order
 }
-

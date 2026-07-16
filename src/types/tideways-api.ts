@@ -141,6 +141,33 @@ export interface TidewaysHistoryResponse {
   transaction_report: HistoryTransactionReport[];
 }
 
+export interface TidewaysTokenCapabilitiesResponse {
+  scopes: string[];
+  projects: Array<{
+    name: string;
+    license: string;
+  }>;
+}
+
+export interface TidewaysObservation {
+  type: string;
+  source: string;
+  label: string;
+  status: string;
+  doc_link?: string;
+  app_link?: string;
+  origins?: string[];
+}
+
+export interface TidewaysObservationsResponse {
+  observations: TidewaysObservation[];
+  criteria?: {
+    environment?: string;
+    service?: string;
+    [key: string]: any;
+  };
+}
+
 export interface HistoryTransactionReport {
   name: string;
   response_time_p95: number;

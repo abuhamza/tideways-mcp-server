@@ -6,8 +6,11 @@ import {
   TidewaysIssuesResponse,
   TidewaysTracesResponse,
   TidewaysHistoryResponse,
+  TidewaysObservationsResponse,
+  TidewaysTokenCapabilitiesResponse,
   GetPerformanceMetricsParams,
   GetPerformanceSummaryParams,
+  GetObservationsParams,
 } from '../types/index.js';
 import { ErrorHandler, TidewaysAPIError } from './errors.js';
 import { logger } from './logger.js';
@@ -153,7 +156,17 @@ export class TidewaysClient {
     throw lastError || new TidewaysAPIError('Unknown error occurred', 'unknown');
   }
 
+  private requireProjectConfig(): void {
+    if (!this.config.organization || !this.config.project) {
+      throw ErrorHandler.handleValidationError(
+        'TIDEWAYS_ORG and TIDEWAYS_PROJECT are required for project-scoped Tideways API calls'
+      );
+    }
+  }
+
   async getPerformanceMetrics(params?: GetPerformanceMetricsParams): Promise<TidewaysPerformanceData> {
+    this.requireProjectConfig();
+
     const apiParams: Record<string, any> = {
       env: params?.env || 'production',
       s: params?.s || 'web',
@@ -176,6 +189,8 @@ export class TidewaysClient {
   }
 
   async getPerformanceSummary(params?: GetPerformanceSummaryParams): Promise<TidewaysPerformanceSummaryData> {
+    this.requireProjectConfig();
+
     const apiParams: Record<string, any> = {
       s: params?.s || 'web',
     };
@@ -194,6 +209,8 @@ export class TidewaysClient {
     status?: string;
     page?: number;
   }): Promise<TidewaysIssuesResponse> {
+    this.requireProjectConfig();
+
     const apiParams: Record<string, any> = {
       status: params?.status || 'open',
       page: params?.page || 1,
@@ -220,11 +237,15 @@ export class TidewaysClient {
     sort_by?: string;
     sort_order?: string;
   }): Promise<TidewaysTracesResponse> {
+    this.requireProjectConfig();
+
     const endpoint = `/${this.config.organization}/${this.config.project}/traces`;
     return this.fetch<TidewaysTracesResponse>(endpoint, params);
   }
 
   async getHistoricalData(date: string, granularity: string = 'day'): Promise<TidewaysHistoryResponse> {
+    this.requireProjectConfig();
+
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
       throw ErrorHandler.handleValidationError(`Invalid date format. Expected YYYY-MM-DD, got: ${date}`);
@@ -245,18 +266,34 @@ export class TidewaysClient {
     return this.fetch(endpoint, {});
   }
 
+  async getTokenCapabilities(): Promise<TidewaysTokenCapabilitiesResponse> {
+    return this.fetch<TidewaysTokenCapabilitiesResponse>('/_token');
+  }
+
+  async getObservations(params?: GetObservationsParams): Promise<TidewaysObservationsResponse> {
+    this.requireProjectConfig();
+
+    const apiParams: Record<string, any> = {
+      env: params?.env || 'production',
+      s: params?.s || 'web',
+    };
+
+    const endpoint = `/${this.config.organization}/${this.config.project}/observations`;
+    return this.fetch<TidewaysObservationsResponse>(endpoint, apiParams);
+  }
+
   async healthCheck(): Promise<{
     status: 'healthy' | 'unhealthy';
     message: string;
     details?: any;
   }> {
     try {
-      const response = await this.client.get('/_token');
+      const response = await this.getTokenCapabilities();
 
-      if (response.data && response.data.scopes) {
+      if (response && response.scopes) {
         logger.info('Tideways API token verified', {
-          scopes: response.data.scopes,
-          projects: response.data.projects?.length || 0,
+          scopes: response.scopes,
+          projects: response.projects?.length || 0,
         });
 
         return {

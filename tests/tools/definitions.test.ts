@@ -18,7 +18,9 @@ describe('Tool Definitions', () => {
       expect(toolNames).toContain('get_issues');
       expect(toolNames).toContain('get_traces');
       expect(toolNames).toContain('get_historical_data');
-      expect(tools).toHaveLength(5);
+      expect(toolNames).toContain('get_token_capabilities');
+      expect(toolNames).toContain('get_observations');
+      expect(tools).toHaveLength(7);
     });
 
     it('should have valid schema for get_performance_metrics', () => {
@@ -50,6 +52,26 @@ describe('Tool Definitions', () => {
       expect(tool!.inputSchema.properties).toHaveProperty('min_date');
       expect(tool!.inputSchema.properties).toHaveProperty('max_date');
       expect(tool!.inputSchema.properties).toHaveProperty('sort_by');
+      expect((tool!.inputSchema.properties as any).min_date).toHaveProperty('pattern', '^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}$');
+      expect((tool!.inputSchema.properties as any).max_date).toHaveProperty('pattern', '^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}$');
+    });
+
+    it('should have valid schema for get_token_capabilities', () => {
+      const tool = tools.find(t => t.name === 'get_token_capabilities');
+
+      expect(tool).toBeDefined();
+      expect(tool!.description).toContain('token scopes');
+      expect(tool!.inputSchema.required).toEqual([]);
+    });
+
+    it('should have valid schema for get_observations', () => {
+      const tool = tools.find(t => t.name === 'get_observations');
+
+      expect(tool).toBeDefined();
+      expect(tool!.description).toContain('observations');
+      expect(tool!.inputSchema.properties).toHaveProperty('env');
+      expect(tool!.inputSchema.properties).toHaveProperty('s');
+      expect(tool!.inputSchema.required).toEqual([]);
     });
 
 

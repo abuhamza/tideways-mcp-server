@@ -24,10 +24,10 @@ Options:
   --help, -h       Show this help message
   --version, -v    Show version information
 
-Environment Variables (required):
+Environment Variables:
   TIDEWAYS_TOKEN     Your Tideways API token
-  TIDEWAYS_ORG       Your Tideways organization name
-  TIDEWAYS_PROJECT   Your Tideways project name
+  TIDEWAYS_ORG       Your Tideways organization name (required for project-scoped tools)
+  TIDEWAYS_PROJECT   Your Tideways project name (required for project-scoped tools)
 
 Examples:
   # Start MCP server
@@ -71,7 +71,7 @@ async function main() {
     }
   }
   
-  const requiredEnvVars = ['TIDEWAYS_TOKEN', 'TIDEWAYS_ORG', 'TIDEWAYS_PROJECT'];
+  const requiredEnvVars = ['TIDEWAYS_TOKEN'];
   const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
   
   if (missingVars.length > 0) {
@@ -82,6 +82,11 @@ async function main() {
     console.error('\nPlease set these environment variables and try again.');
     console.error('Use --help for more information.');
     process.exit(1);
+  }
+
+  if (!process.env.TIDEWAYS_ORG || !process.env.TIDEWAYS_PROJECT) {
+    console.error('Warning: TIDEWAYS_ORG and TIDEWAYS_PROJECT are not set.');
+    console.error('Token capability discovery will work, but project-scoped tools require both variables.');
   }
   
   try {

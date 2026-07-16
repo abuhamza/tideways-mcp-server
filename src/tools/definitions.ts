@@ -6,6 +6,16 @@ export const TRACE_CONFIG = {
 export function getToolDefinitions(): Tool[] {
   return [
     {
+      name: 'get_token_capabilities',
+      description:
+        'Retrieve Tideways API token scopes and accessible projects in JSON format. Use first when validating credentials or discovering which projects a token can access.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+    },
+    {
       name: 'get_performance_metrics',
       description:
         'Retrieve aggregate performance metrics and system-wide statistics in JSON format. Use for monitoring overall application health, trends, and high-level performance overview (use get_traces for detailed individual request analysis).',
@@ -77,6 +87,27 @@ export function getToolDefinitions(): Tool[] {
       },
     },
     {
+      name: 'get_observations',
+      description:
+        'Retrieve Tideways observations in JSON format for configuration and code-level bottleneck hints. Uses production/web defaults unless env or service are provided.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          env: {
+            type: 'string',
+            default: 'production',
+            description: 'Environment name (e.g., "production", "staging"). Default: "production"',
+          },
+          s: {
+            type: 'string',
+            default: 'web',
+            description: 'Service name (e.g., "web", "api", "worker"). Default: "web"',
+          },
+        },
+        required: [],
+      },
+    },
+    {
       name: 'get_historical_data',
       description: 'Retrieve historical performance data in JSON format for a specific date with configurable granularity. Analyze daily, weekly, or monthly performance trends, transaction reports, and time-series metrics.',
       inputSchema: {
@@ -126,11 +157,13 @@ export function getToolDefinitions(): Tool[] {
           },
           min_date: {
             type: 'string',
+            pattern: '^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}$',
             description:
               'Minimal date for traces in YYYY-MM-DD HH:MM format (e.g., "2024-01-15 14:30"). Convert natural language like "1 hour ago" to this format. Requires max_date.',
           },
           max_date: {
             type: 'string',
+            pattern: '^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}$',
             description:
               'Maximal date for traces in YYYY-MM-DD HH:MM format (e.g., "2024-01-15 16:30"). Convert natural language like "now" to this format. Requires min_date.',
           },

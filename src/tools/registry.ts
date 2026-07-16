@@ -4,16 +4,22 @@ import { handleGetPerformanceSummary } from './handlers/performance-summary-hand
 import { handleGetIssues } from './handlers/issues-handler.js';
 import { handleGetTraces } from './handlers/traces-handler.js';
 import { handleGetHistoricalData } from './handlers/historical-handler.js';
+import { handleGetTokenCapabilities } from './handlers/token-capabilities-handler.js';
+import { handleGetObservations } from './handlers/observations-handler.js';
 import {
   GetPerformanceMetricsParams,
   GetPerformanceSummaryParams,
   GetIssuesParams,
   GetTracesParams,
   GetHistoricalDataParams,
+  GetObservationsParams,
 } from '../types/index.js';
 
 type ToolHandler = (client: TidewaysClient, params: any) => Promise<string>;
 const TOOL_HANDLERS: Record<string, ToolHandler> = {
+  get_token_capabilities: (client: TidewaysClient) =>
+    handleGetTokenCapabilities(client),
+
   get_performance_metrics: (client: TidewaysClient, params: GetPerformanceMetricsParams) =>
     handleGetPerformanceMetrics(client, params),
   
@@ -22,6 +28,9 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   
   get_issues: (client: TidewaysClient, params: GetIssuesParams) =>
     handleGetIssues(client, params),
+
+  get_observations: (client: TidewaysClient, params: GetObservationsParams) =>
+    handleGetObservations(client, params),
   
   get_traces: (client: TidewaysClient, params: GetTracesParams) =>
     handleGetTraces(client, params),
@@ -43,4 +52,3 @@ export async function executeTool(
   
   return handler(client, params);
 }
-
