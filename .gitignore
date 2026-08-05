@@ -19,6 +19,9 @@ tests/**/*.d.ts.map
 .env.test.local
 .env.production.local
 
+# Local workflow notes
+thoughts/
+
 # Coverage
 coverage/
 *.lcov
