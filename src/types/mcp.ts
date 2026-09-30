@@ -10,8 +10,8 @@ export interface GetPerformanceSummaryParams {
 }
 
 export interface GetIssuesParams {
-  issue_type?: 'error' | 'slowsql' | 'deprecated' | 'all';
-  status?: 'open' | 'new' | 'resolved' | 'not_error' | 'ignored' | 'all';
+  issue_type?: 'error' | 'slowsql' | 'deprecated';
+  status?: 'open' | 'new' | 'resolved' | 'not_error' | 'ignored';
   page?: number;
 }
 

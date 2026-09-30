@@ -197,11 +197,8 @@ export class TidewaysClient {
     const apiParams: Record<string, any> = {
       status: params?.status || 'open',
       page: params?.page || 1,
+      issueType: params?.issue_type || 'error',
     };
-
-    if (params?.issue_type && params.issue_type !== 'all') {
-      apiParams.issueType = params.issue_type;
-    }
 
     const endpoint = `/${this.config.organization}/${this.config.project}/issues`;
     return this.fetch<TidewaysIssuesResponse>(endpoint, apiParams);

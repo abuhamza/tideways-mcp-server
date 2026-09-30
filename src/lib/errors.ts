@@ -35,6 +35,11 @@ export class ErrorHandler {
   }
 
   static handleApiError(error: any): TidewaysAPIError {
+    // Handlers call this on errors the HTTP client already mapped; keep their category and message.
+    if (error instanceof TidewaysAPIError) {
+      return error;
+    }
+
     logger.error('API error occurred', error, {
       url: error.config?.url,
       method: error.config?.method,
@@ -42,8 +47,11 @@ export class ErrorHandler {
     });
 
     if (error.response?.status === 429) {
-      const resetTime = error.response.headers['x-ratelimit-reset'];
-      const retryAfter = resetTime ? parseInt(resetTime, 10) * 1000 : undefined;
+      // X-RateLimit-Reset is a Unix epoch in seconds, not a duration.
+      const resetEpochSeconds = parseInt(error.response.headers?.['x-ratelimit-reset'], 10);
+      const retryAfter = Number.isFinite(resetEpochSeconds)
+        ? Math.max(0, resetEpochSeconds * 1000 - Date.now())
+        : undefined;
 
       return new TidewaysAPIError(
         'Rate limit exceeded. Please try again later.',
@@ -146,10 +154,10 @@ export class ErrorHandler {
   }
 
   static isRetryable(error: TidewaysAPIError): boolean {
+    // Rate limits reset at the top of the hour, so retrying a 429 only delays the error.
     return (
       error.category === 'network' ||
-      (error.category === 'api' && error.statusCode && error.statusCode >= 500) ||
-      error.category === 'rate_limit'
+      (error.category === 'api' && !!error.statusCode && error.statusCode >= 500)
     );
   }
 

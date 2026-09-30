@@ -94,12 +94,14 @@ async function main() {
 }
 
 process.on('SIGINT', () => {
-  console.log('\nShutting down Tideways MCP Server...');
+  // stdout carries MCP JSON-RPC; anything else goes to stderr.
+  console.error('Shutting down Tideways MCP Server...');
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('\nShutting down Tideways MCP Server...');
+  // stdout carries MCP JSON-RPC; anything else goes to stderr.
+  console.error('Shutting down Tideways MCP Server...');
   process.exit(0);
 });
 
