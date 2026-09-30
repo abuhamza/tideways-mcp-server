@@ -144,8 +144,8 @@ jobs:
           VERSION: ${{ needs.release-please.outputs.version }}
         run: |
           file="tideways-mcp-server-${VERSION}.mcpb"
-          npx --yes @anthropic-ai/mcpb@2.1.2 validate mcpb/manifest.json
-          npx --yes @anthropic-ai/mcpb@2.1.2 pack mcpb "$file"
+          npx --no-install mcpb validate mcpb/manifest.json
+          npx --no-install mcpb pack mcpb "$file"
           sha256="$(sha256sum "$file" | cut -d' ' -f1)"
           echo "filename=$file" >> "$GITHUB_OUTPUT"
           echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
