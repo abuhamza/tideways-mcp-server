@@ -1,152 +1,88 @@
-name: Release and Publish
+# Release pipeline: release-please opens/updates a release PR on every push to main; merging that PR
+# creates the tag + GitHub release, and the jobs below publish the artifacts for that release.
+#
+# npm Trusted Publishing must be configured on npmjs.com for this exact file:
+#   owner=abuhamza, repo=tideways-mcp-server, workflow=release.yml, environment=production,
+#   allowed actions: "npm publish" (configs created after 2026-09-03 only allow "npm stage publish" by default).
+name: Release
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
-permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  id-token: write
-  attestations: write
+permissions: {}
 
-env:
-  NODE_VERSION: '22'
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  quality-gate:
-    name: Quality Gate
+  release-please:
+    name: release-please
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # tags, GitHub releases, release PR branch
+      pull-requests: write # open/update the release PR
+      issues: write # release PR labels (autorelease: pending/tagged)
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          # PRs opened with GITHUB_TOKEN do not trigger CI, so required checks never run on the release PR.
+          # Use a fine-grained PAT (or GitHub App token) with contents/pull-requests/issues: read & write.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish-npm:
+    name: Publish to npm (trusted publishing)
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://www.npmjs.com/package/tideways-mcp-server/v/${{ needs.release-please.outputs.version }}
     permissions:
       contents: read
-      security-events: write
-      actions: read
-
+      id-token: write # OIDC token for npm trusted publishing (+ automatic provenance)
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          fetch-depth: 0
+          egress-policy: audit
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          persist-credentials: false
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run type checking
-        run: npm run typecheck
-
-      - name: Run linter
-        run: npm run lint
-
-      - name: Run tests with coverage
-        run: npm run test:coverage
-
-      - name: Run security audit
-        run: npm audit --audit-level moderate
-
-      - name: Run dependency vulnerability check
-        run: npx audit-ci --moderate
-
-      - name: Build project
-        run: npm run build
-
-      - name: Test package installation
-        run: |
-          npm pack
-          npm install -g ./tideways-mcp-server-*.tgz
-          echo "Package installed successfully"
-          npm uninstall -g tideways-mcp-server
-
-  release:
-    name: Release and Publish
-    runs-on: ubuntu-latest
-    environment: production
-    needs: quality-gate
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      id-token: write
-      attestations: write
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          fetch-depth: 0
-          token: ${{ secrets.RELEASE_ACCESS_TOKEN }}
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false # no dependency cache in a job that can mint an OIDC token
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build project
-        run: npm run build
-
-      - name: Verify package contents
+      # Node 24 LTS ships npm 11.x (24.21.0 -> npm 11.19.0), which already satisfies this; kept as a guard.
+      - name: Ensure npm >= 11.5.1
         run: |
-          echo "Package contents:"
-          npm pack --dry-run
-          
-          echo "Testing CLI functionality:"
-          node bin/cli.js --help || echo "CLI help check completed"
+          current="$(npm --version)"
+          if [ "$(printf '%s\n' 11.5.1 "$current" | sort -V | head -n1)" != "11.5.1" ]; then
+            npm install -g npm@^11.5.1
+          fi
+          npm --version
 
-      - name: Release with semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_ACCESS_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npx semantic-release
+      - run: npm ci
+      - run: npm run build
 
-      - name: Publication summary
-        if: success()
-        run: |
-          echo "Package published successfully with provenance attestation"
-          echo "NPM package: https://www.npmjs.com/package/tideways-mcp-server"
-          echo "GitHub release: https://github.com/${{ github.repository }}/releases"
-          echo "Authentication: NPM token with provenance attestation"
-
-  notify-success:
-    name: Notify Success
-    runs-on: ubuntu-latest
-    needs: [quality-gate, release]
-    if: success()
-    permissions:
-      contents: read
-
-    steps:
-      - name: Success notification
-        run: |
-          echo "🎉 Release workflow completed successfully!"
-          echo "📦 Package published to NPM"
-          echo "🏷️ GitHub release created"
-          echo "📝 Changelog updated"
-
-  notify-failure:
-    name: Notify Failure
-    runs-on: ubuntu-latest
-    needs: [quality-gate, release]
-    if: failure()
-    permissions:
-      contents: read
-
-    steps:
-      - name: Failure notification
-        run: |
-          echo "❌ Release workflow failed!"
-          echo "Please check the logs for details"
-          exit 1
+      # With trusted publishing npm generates provenance automatically; --provenance is explicit but redundant.
+      # No NODE_AUTH_TOKEN / NPM_TOKEN: npm exchanges the GitHub OIDC token for a short-lived publish token.
+      - run: npm publish --provenance --access public
