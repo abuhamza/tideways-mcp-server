@@ -9,6 +9,14 @@ name: Release
 on:
   push:
     branches: [main]
+  # Re-publish an existing release to the MCP Registry only (e.g. the first time, after the GHCR
+  # package was made public). Every other job is skipped on this trigger.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish to the MCP Registry, e.g. v2.0.0
+        required: true
+        type: string
 
 permissions: {}
 
@@ -19,6 +27,7 @@ concurrency:
 jobs:
   release-please:
     name: release-please
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -80,9 +89,233 @@ jobs:
           fi
           npm --version
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run build
 
       # With trusted publishing npm generates provenance automatically; --provenance is explicit but redundant.
       # No NODE_AUTH_TOKEN / NPM_TOKEN: npm exchanges the GitHub OIDC token for a short-lived publish token.
       - run: npm publish --provenance --access public
+
+  mcpb:
+    name: Build MCPB bundle and attach to release
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write # gh release upload
+    outputs:
+      filename: ${{ steps.pack.outputs.filename }}
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+
+      # mcpb pack zips the directory as-is (it does not install anything), so stage a clean copy that
+      # contains the compiled server plus production-only node_modules.
+      - name: Stage bundle contents
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          jq -e --arg v "$VERSION" '.version == $v' manifest.json >/dev/null \
+            || { echo "::error::manifest.json version does not match $VERSION"; exit 1; }
+          mkdir -p mcpb
+          cp manifest.json package.json package-lock.json LICENSE README.md mcpb/
+          cp -R dist mcpb/dist
+          (cd mcpb && npm ci --omit=dev --ignore-scripts --no-audit --no-fund)
+
+      - name: Validate and pack
+        id: pack
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          file="tideways-mcp-server-${VERSION}.mcpb"
+          npx --yes @anthropic-ai/mcpb@2.1.2 validate mcpb/manifest.json
+          npx --yes @anthropic-ai/mcpb@2.1.2 pack mcpb "$file"
+          sha256="$(sha256sum "$file" | cut -d' ' -f1)"
+          echo "filename=$file" >> "$GITHUB_OUTPUT"
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+          echo "$sha256  $file" | tee "$file.sha256"
+
+      - name: Upload to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          FILE: ${{ steps.pack.outputs.filename }}
+        run: gh release upload "$TAG" "$FILE" "$FILE.sha256" --clobber --repo "$GITHUB_REPOSITORY"
+
+  docker:
+    name: Publish container image (ghcr.io)
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write # push to ghcr.io
+      id-token: write # actions/attest: Sigstore signing certificate
+      attestations: write # actions/attest: store the attestation
+    env:
+      IMAGE: ghcr.io/abuhamza/tideways-mcp-server
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          persist-credentials: false
+
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.release-please.outputs.tag_name }}
+            type=raw,value=${{ needs.release-please.outputs.tag_name }}
+            type=raw,value=latest
+          labels: |
+            io.modelcontextprotocol.server.name=io.github.abuhamza/tideways-mcp-server
+
+      # No build cache on purpose: release images are built from scratch (no cache-poisoning path).
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          provenance: mode=max
+          sbom: true
+
+      # Sigstore-signed SLSA provenance, verifiable with:
+      #   gh attestation verify oci://ghcr.io/abuhamza/tideways-mcp-server:<version> -R abuhamza/tideways-mcp-server
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false # storage records need an org-owned repo (and artifact-metadata: write)
+
+  mcp-registry:
+    name: Publish to the MCP Registry
+    needs: [release-please, publish-npm, mcpb, docker]
+    # Opt-in: set repository variable MCP_REGISTRY_PUBLISH=true once the GHCR package is public
+    # (the registry pulls the image anonymously to verify its label).
+    if: >-
+      always() && vars.MCP_REGISTRY_PUBLISH == 'true' && (
+        github.event_name == 'workflow_dispatch' || (
+          needs.release-please.outputs.release_created == 'true' &&
+          needs.publish-npm.result == 'success' &&
+          needs.mcpb.result == 'success' &&
+          needs.docker.result == 'success'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # checkout + gh release download
+      id-token: write # mcp-publisher login github-oidc
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
+      MCP_PUBLISHER_VERSION: 1.8.1
+      MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc # linux_amd64
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+          persist-credentials: false
+
+      - name: Install mcp-publisher (pinned + checksum-verified)
+        run: |
+          curl -fsSL -o mcp-publisher.tar.gz \
+            "https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum -c -
+          tar -xzf mcp-publisher.tar.gz mcp-publisher
+
+      # Works for both triggers: the MCPB checksum comes from the release asset, not a job output.
+      - name: Resolve version and MCPB checksum from the release
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${TAG#v}"
+          file="tideways-mcp-server-${version}.mcpb"
+          gh release download "$TAG" --pattern "${file}.sha256" --repo "$GITHUB_REPOSITORY"
+          sha256="$(cut -d' ' -f1 "${file}.sha256")"
+          [[ "$sha256" =~ ^[0-9a-f]{64}$ ]] || { echo "::error::bad checksum file for $file"; exit 1; }
+          {
+            echo "version=$version"
+            echo "file=$file"
+            echo "sha256=$sha256"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set release-specific fields in server.json
+        env:
+          VERSION: ${{ steps.rel.outputs.version }}
+          MCPB_FILE: ${{ steps.rel.outputs.file }}
+          MCPB_SHA256: ${{ steps.rel.outputs.sha256 }}
+        run: |
+          jq --arg v "$VERSION" --arg tag "$TAG" --arg file "$MCPB_FILE" --arg sha "$MCPB_SHA256" \
+             --arg repo "$GITHUB_REPOSITORY" '
+            .version = $v
+            | .packages |= map(
+                if .registryType == "npm" then .version = $v
+                elif .registryType == "oci" then .identifier = "ghcr.io/\($repo):\($v)"
+                elif .registryType == "mcpb" then
+                  .identifier = "https://github.com/\($repo)/releases/download/\($tag)/\($file)"
+                  | .fileSha256 = $sha
+                else . end)
+          ' server.json > server.json.tmp
+          mv server.json.tmp server.json
+          cat server.json
+
+      # The registry checks mcpName on registry.npmjs.org/<pkg>/<version>; wait for it to be served.
+      - name: Wait for the npm version to be visible
+        env:
+          VERSION: ${{ steps.rel.outputs.version }}
+        run: |
+          for _ in $(seq 1 30); do
+            if [ "$(npm view "tideways-mcp-server@${VERSION}" mcpName 2>/dev/null)" = "io.github.abuhamza/tideways-mcp-server" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::tideways-mcp-server@${VERSION} (with mcpName) not visible on npm after 5 minutes"
+          exit 1
+
+      - run: ./mcp-publisher validate server.json
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher publish server.json
