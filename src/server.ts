@@ -2,8 +2,10 @@ import { McpServer } from '@modelcontextprotocol/server';
 
 import pkg from '../package.json' with { type: 'json' };
 import type { ToolContext } from './context.js';
+import { registerGetHistoryTool } from './tools/history.js';
 import { registerListIssuesTool } from './tools/issues.js';
 import { registerListProjectsTool } from './tools/list-projects.js';
+import { registerGetObservationsTool } from './tools/observations.js';
 import { registerPerformanceSummaryTool } from './tools/performance-summary.js';
 import { registerPerformanceTool } from './tools/performance.js';
 import { registerSearchTracesTool } from './tools/traces.js';
@@ -19,5 +21,7 @@ export function createServer(ctx: ToolContext): McpServer {
   registerPerformanceSummaryTool(server, ctx);
   registerListIssuesTool(server, ctx);
   registerSearchTracesTool(server, ctx);
+  registerGetHistoryTool(server, ctx);
+  registerGetObservationsTool(server, ctx);
   return server;
 }
