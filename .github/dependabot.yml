@@ -35,6 +35,9 @@ updates:
       # @types/node tracks the oldest supported runtime (Node 22); bump its major by hand.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # typescript-eslint 8 supports TypeScript < 6.1; bump TypeScript by hand.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: github-actions
     directory: /
