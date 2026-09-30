@@ -1,0 +1,12 @@
+# Allow-list style: ignore everything, then re-include only what the Dockerfile COPYs.
+*
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.build.json
+!src/
+!src/**
+
+# Never ship local secrets even if a future COPY widens the context.
+**/.env
+**/.env.*

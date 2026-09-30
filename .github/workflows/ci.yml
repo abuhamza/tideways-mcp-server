@@ -121,3 +121,83 @@ jobs:
           name: npm-package
           path: "*.tgz"
           retention-days: 7
+
+  docker:
+    name: Container build, scan, MCP smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      IMAGE: tideways-mcp-server:ci
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build image (linux/amd64, not pushed)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ env.IMAGE }}
+
+      - name: MCP initialize handshake over stdio
+        run: |
+          set -euo pipefail
+          REQUEST='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci-smoke-test","version":"1.0.0"}}}'
+
+          # Run the server as a coprocess so its stdin stays open while we wait for the reply.
+          # --network none: the handshake must not need the Tideways API.
+          coproc MCP {
+            exec docker run -i --rm --init --network none \
+              -e TIDEWAYS_TOKEN=dummy \
+              "$IMAGE" 2>mcp-stderr.log
+          }
+          mcp_pid=$MCP_PID
+          exec {mcp_in}>&"${MCP[1]}" {mcp_out}<&"${MCP[0]}"   # dup: bash closes MCP[*] if the server exits
+
+          printf '%s\n' "$REQUEST" >&"$mcp_in" || true
+
+          response=""
+          deadline=$((SECONDS + 60))
+          while (( SECONDS < deadline )); do
+            if IFS= read -r -t 5 line <&"$mcp_out"; then
+              # stdout must carry only JSON-RPC; tolerate (but flag) anything else.
+              if jq -e '.id == 1' >/dev/null 2>&1 <<<"$line"; then response=$line; break; fi
+              echo "::warning::unexpected stdout line: $line"
+            else
+              (( $? > 128 )) && continue   # read timed out: keep waiting
+              break                        # EOF: the server exited
+            fi
+          done
+
+          exec {mcp_in}>&- {mcp_out}<&-    # EOF on the server's stdin
+          kill "$mcp_pid" 2>/dev/null || true
+          wait "$mcp_pid" 2>/dev/null || true
+
+          echo "::group::server stderr"; cat mcp-stderr.log; echo "::endgroup::"
+          echo "response: ${response:-<none>}"
+
+          jq -e '.jsonrpc == "2.0" and .id == 1 and (has("error") | not)
+                 and (.result.protocolVersion | type == "string")
+                 and (.result.serverInfo.name | type == "string")' <<<"${response:-null}" >/dev/null \
+            || { echo "::error::MCP initialize handshake failed"; exit 1; }
+          echo "MCP handshake OK: $(jq -c '{protocolVersion: .result.protocolVersion, serverInfo: .result.serverInfo}' <<<"$response")"
+
+      - name: Vulnerability scan (Grype) - fail on fixable HIGH/CRITICAL
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        with:
+          image: ${{ env.IMAGE }}
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+          output-format: table

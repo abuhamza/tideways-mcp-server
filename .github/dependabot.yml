@@ -55,3 +55,24 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+    # Base-image digest bumps: "chore(deps): bump node from `0e0ff40` to `1a2b3c4`" (no release on their own)
+    commit-message:
+      prefix: chore
+      include: scope
+    labels:
+      - dependencies
+      - docker
+    groups:
+      docker-base-images:
+        patterns: ["*"]
+    ignore:
+      # Stay on the Node 24 LTS line; move to the next LTS deliberately.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
