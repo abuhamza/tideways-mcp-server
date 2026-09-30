@@ -96,7 +96,6 @@ export class TidewaysHttp {
       };
       const started = this.now();
       let response: Response;
-      let body: Body;
       try {
         response = await this.fetchImpl(url, {
           headers: {
@@ -106,7 +105,6 @@ export class TidewaysHttp {
           },
           signal: AbortSignal.timeout(this.options.timeoutMs),
         });
-        body = await readBody(response);
       } catch (cause) {
         if (attempt <= this.maxRetries) {
           await this.backoff(attempt, path, cause instanceof Error ? cause.name : 'network error');
@@ -115,8 +113,27 @@ export class TidewaysHttp {
         throw errorForTransport(cause, context);
       }
 
+      // Parse rate-limit headers immediately after fetch resolves, before reading body
       const snapshot = parseRateLimit(response.headers);
       if (snapshot) this.rateLimit = snapshot;
+
+      // Try to read the response body
+      let body: Body;
+      try {
+        body = await readBody(response);
+      } catch (cause) {
+        // 429 is never retried, even if body read fails
+        if (response.status === 429) {
+          throw errorForStatus(429, undefined, context, this.rateLimit);
+        }
+        // Other statuses: retry on body read failure
+        if (attempt <= this.maxRetries) {
+          await this.backoff(attempt, path, cause instanceof Error ? cause.name : 'network error');
+          continue;
+        }
+        throw errorForTransport(cause, context);
+      }
+
       this.options.logger.debug('tideways request', {
         path,
         status: response.status,

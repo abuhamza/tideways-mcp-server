@@ -192,4 +192,35 @@ describe('TidewaysHttp.get', () => {
     await expect(http.get('/a', { resource: 'x' })).resolves.toEqual({ ok: true });
     expect(api.requests).toHaveLength(2); // initial failed, retry succeeded
   });
+
+  it('never retries a 429 even if the body read fails', async () => {
+    const { http, api } = client({
+      '/a': {
+        status: 429,
+        headers: { 'x-ratelimit-remaining': '0' },
+        bodyThrows: new TypeError('body stream error'),
+      },
+    });
+    const error = await failure(http.get('/a', { resource: 'x' }));
+    expect(error.kind).toBe('rate_limited');
+    expect(error.resetAt).toEqual(new Date('2026-09-30T13:00:00Z'));
+    expect(api.requests).toHaveLength(1); // exactly 1 request, no retry
+  });
+
+  it('records rate-limit headers even when body read fails', async () => {
+    const { http } = client({
+      '/a': {
+        status: 200,
+        headers: { 'x-ratelimit-remaining': '10' },
+        bodyThrows: new DOMException('aborted', 'TimeoutError'),
+      },
+    });
+    expect(http.lastRateLimit()).toBeUndefined();
+    expect((await failure(http.get('/a', { resource: 'x' }))).kind).toBe('timeout');
+    expect(http.lastRateLimit()).toEqual({
+      limit: 5000,
+      remaining: 10,
+      resetAt: new Date('2026-09-30T13:00:00Z'),
+    });
+  });
 });
