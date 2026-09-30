@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # Tideways MCP server (stdio transport).
 #   docker run -i --rm -e TIDEWAYS_TOKEN=... ghcr.io/abuhamza/tideways-mcp-server:latest
 # Base images are pinned by multi-arch index digest; Dependabot (docker ecosystem) bumps the digests.
@@ -40,9 +38,9 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 # package.json is required at runtime: its "type": "module" makes Node load dist/*.js as ESM.
-COPY --from=deps --chown=65532:65532 /app/node_modules ./node_modules
-COPY --from=build --chown=65532:65532 /app/dist ./dist
-COPY --chown=65532:65532 package.json ./
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY package.json ./
 
 USER 65532:65532
 
