@@ -1,115 +1,38 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  McpError,
-} from '@modelcontextprotocol/sdk/types.js';
-import { TidewaysClient } from './lib/tideways-client.js';
-import { logger } from './lib/logger.js';
-import { loadConfig, ServerConfig } from './config/index.js';
-import { ErrorHandler, TidewaysAPIError } from './lib/errors.js';
-import { getToolDefinitions } from './tools/definitions.js';
-import { executeTool } from './tools/registry.js';
+import { McpServer } from '@modelcontextprotocol/server';
 
+import pkg from '../package.json' with { type: 'json' };
+import type { ToolContext } from './context.js';
+import { registerGetHistoryTool } from './tools/history.js';
+import { registerListIssuesTool } from './tools/issues.js';
+import { registerListProjectsTool } from './tools/list-projects.js';
+import { registerGetObservationsTool } from './tools/observations.js';
+import { registerPerformanceSummaryTool } from './tools/performance-summary.js';
+import { registerPerformanceTool } from './tools/performance.js';
+import { registerSearchTracesTool } from './tools/traces.js';
 
-export class TidewaysMCPServer {
-  private server: Server;
-  private tidewaysClient: TidewaysClient;
-  private config: ServerConfig;
+export const SERVER_INSTRUCTIONS = [
+  'Read-only access to Tideways, a performance monitoring service for PHP applications.',
+  'All times are UTC in "YYYY-MM-DD HH:mm". Every tool except tideways_list_projects accepts an optional',
+  '"project"; call tideways_list_projects when unsure which projects exist or after a scope/project error.',
+  'Pick the tool by question: current health and top transactions -> tideways_get_performance;',
+  '15-minute trends over up to 30 days -> tideways_get_performance_summary; past day/week/month',
+  'reports -> tideways_get_history; errors, slow SQL, deprecations -> tideways_list_issues;',
+  'individual slow requests -> tideways_search_traces; configuration and code findings ->',
+  'tideways_get_observations. The hourly API rate limit is shared by all projects of the token.',
+].join(' ');
 
-  constructor() {
-    this.config = loadConfig();
-    this.tidewaysClient = new TidewaysClient(this.config);
-    this.server = new Server(
-      {
-        name: 'tideways-mcp-server',
-        version: '0.1.0',
-      },
-      {
-        capabilities: {
-          tools: {},
-        },
-      }
-    );
-
-    this.setupHandlers();
-  }
-
-  private setupHandlers(): void {
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      return {
-        tools: getToolDefinitions(),
-      };
-    });
-
-    this.server.setRequestHandler(CallToolRequestSchema, async request => {
-      const { name, arguments: args } = request.params;
-
-      logger.info('Tool called', { toolName: name, arguments: args });
-
-      try {
-        const result = await executeTool(name, args, this.tidewaysClient);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: result,
-            },
-          ],
-        };
-          } catch (error) {
-      logger.error('Tool execution failed', error as Error, { toolName: name, arguments: args });
-
-      const tidewaysError: TidewaysAPIError = error instanceof TidewaysAPIError
-        ? error 
-        : ErrorHandler.handleApiError(error);
-
-      throw new McpError(
-        ErrorHandler.getJsonRpcErrorCode(tidewaysError),
-        ErrorHandler.formatErrorForUser(tidewaysError),
-        { 
-          category: tidewaysError.category,
-          statusCode: tidewaysError.statusCode,
-          retryAfter: tidewaysError.retryAfter
-        }
-      );
-      }
-    });
-  }
-
-  async start(): Promise<void> {
-    logger.info('Starting Tideways MCP Server', {
-      version: '0.1.0',
-      organization: this.config.organization,
-      project: this.config.project,
-    });
-
-    try {
-      const health = await this.tidewaysClient.healthCheck();
-      if (health.status === 'healthy') {
-        logger.info('Tideways API connection verified');
-      } else {
-        logger.warn('Tideways API health check failed, but starting server anyway', health);
-      }
-    } catch (error) {
-      logger.warn('Tideways API health check failed, but starting server anyway', {
-        error: (error as Error).message,
-      });
-    }
-
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-
-    logger.info('Tideways MCP Server started successfully');
-
-    process.on('SIGINT', () => this.shutdown());
-    process.on('SIGTERM', () => this.shutdown());
-  }
-
-  private async shutdown(): Promise<void> {
-    logger.info('Shutting down Tideways MCP Server');
-    process.exit(0);
-  }
-
+/** Build one MCP server instance. The stdio entry calls this once per connection. */
+export function createServer(ctx: ToolContext): McpServer {
+  const server = new McpServer(
+    { name: 'tideways-mcp-server', title: 'Tideways', version: pkg.version },
+    { capabilities: { tools: { listChanged: false } }, instructions: SERVER_INSTRUCTIONS }
+  );
+  registerListProjectsTool(server, ctx);
+  registerPerformanceTool(server, ctx);
+  registerPerformanceSummaryTool(server, ctx);
+  registerListIssuesTool(server, ctx);
+  registerSearchTracesTool(server, ctx);
+  registerGetHistoryTool(server, ctx);
+  registerGetObservationsTool(server, ctx);
+  return server;
 }
