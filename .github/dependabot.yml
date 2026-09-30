@@ -1,47 +1,71 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: npm
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "abuhamza"
-    assignees:
-      - "abuhamza"
+      interval: weekly
+      day: monday
+      time: "06:00"
+    open-pull-requests-limit: 10
+    # Supply-chain buffer: wait 7 days before proposing a new version (version updates only;
+    # security updates are never delayed).
+    cooldown:
+      default-days: 7
+    # Conventional Commits accepted by @commitlint/config-conventional:
+    #   production deps  -> "fix(deps): bump axios from 1.11.0 to 1.18.0"   (release-please: patch release)
+    #   development deps -> "chore(deps-dev): bump jest from 29.7.0 to 30.1.0" (hidden, no release)
     commit-message:
-      prefix: "security"
-      prefix-development: "dev-deps"
-      include: "scope"
+      prefix: fix
+      prefix-development: chore
+      include: scope
     labels:
-      - "dependencies"
-      - "security"
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"
+      - dependencies
     groups:
-      security-updates:
-        patterns:
-          - "*"
-        update-types:
-          - "security"
+      # All security updates in one PR. Groups are matched in order, so this must come first.
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+      production-dependencies:
+        dependency-type: production
+        update-types: [minor, patch]
+    ignore:
+      # @types/node tracks the oldest supported runtime (Node 22); bump its major by hand.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # v1 toolchain is frozen until the v2 rewrite replaces it (PR2 removes these entries).
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@typescript-eslint/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint-config-prettier"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "jest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "ts-jest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/jest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "dotenv"
+        update-types: ["version-update:semver-major"]
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "10:00"
-    open-pull-requests-limit: 3
-    reviewers:
-      - "abuhamza"
-    assignees:
-      - "abuhamza"
+      interval: weekly
+      day: monday
+      time: "06:00"
+    # "ci(deps): bump actions/checkout from 7.0.0 to 7.0.1" (SHA pins and their "# vX.Y.Z" comments are updated together)
     commit-message:
-      prefix: "ci"
-      include: "scope"
+      prefix: ci
+      include: scope
     labels:
-      - "ci"
-      - "github-actions"
+      - dependencies
+      - github-actions
+    groups:
+      github-actions:
+        patterns: ["*"]
