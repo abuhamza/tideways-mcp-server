@@ -43,6 +43,7 @@ const envSchema = z.object({
     .number({ error: 'must be a number of milliseconds' })
     .int('must be an integer')
     .positive('must be positive')
+    .max(600_000, 'must be at most 600000 ms')
     .default(30_000),
   LOG_LEVEL: z
     .enum(LOG_LEVELS, { error: `must be one of ${LOG_LEVELS.join(', ')}` })
@@ -56,7 +57,10 @@ const envSchema = z.object({
 export function loadConfig(env: Record<string, string | undefined>): Config {
   const cleaned = Object.fromEntries(
     Object.entries(env)
-      .map(([key, value]) => [key, value?.trim()] as const)
+      .map(
+        ([key, value]) =>
+          [key, key === 'LOG_LEVEL' ? value?.trim().toLowerCase() : value?.trim()] as const
+      )
       .filter(([, value]) => value !== undefined && value !== '')
   );
   const parsed = envSchema.safeParse(cleaned);

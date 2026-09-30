@@ -78,6 +78,23 @@ describe('loadConfig', () => {
     );
   });
 
+  it('accepts LOG_LEVEL in any case but still rejects unknown levels', () => {
+    expect(loadConfig({ TIDEWAYS_TOKEN: 'x', LOG_LEVEL: 'INFO' }).logLevel).toBe('info');
+    expect(loadConfig({ TIDEWAYS_TOKEN: 'x', LOG_LEVEL: 'Debug' }).logLevel).toBe('debug');
+    expect(() => loadConfig({ TIDEWAYS_TOKEN: 'x', LOG_LEVEL: 'trace' })).toThrow(
+      /LOG_LEVEL must be one of debug, info, warn, error/
+    );
+  });
+
+  it('bounds the request timeout to 600000 ms', () => {
+    expect(
+      loadConfig({ TIDEWAYS_TOKEN: 'x', TIDEWAYS_REQUEST_TIMEOUT: '600000' }).requestTimeoutMs
+    ).toBe(600_000);
+    expect(() => loadConfig({ TIDEWAYS_TOKEN: 'x', TIDEWAYS_REQUEST_TIMEOUT: '600001' })).toThrow(
+      /TIDEWAYS_REQUEST_TIMEOUT must be at most 600000 ms/
+    );
+  });
+
   it('never includes the token in error messages', () => {
     expect(() => loadConfig({ TIDEWAYS_TOKEN: 'super-secret', LOG_LEVEL: 'loud' })).toThrow(
       expect.objectContaining({ message: expect.not.stringContaining('super-secret') as string })
