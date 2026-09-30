@@ -139,6 +139,19 @@ describe('TidewaysHttp.get', () => {
     expect(api.requests).toHaveLength(1);
   });
 
+  it('lets an uncounted request through once the budget is exhausted', async () => {
+    const { http, api } = client({
+      '/a': { body: {}, headers: { 'x-ratelimit-remaining': '0' } },
+      '/_token': { body: { ok: 1 } },
+    });
+    await http.get('/a', { resource: 'x' });
+    await expect(http.get('/_token', { resource: 'x', uncounted: true })).resolves.toEqual({
+      ok: 1,
+    });
+    expect((await failure(http.get('/a', { resource: 'x' }))).kind).toBe('rate_limited');
+    expect(api.requests).toHaveLength(2);
+  });
+
   it('allows requests again once the reset time has passed', async () => {
     // Reset 2026-09-30T12:00:00Z is before NOW (12:44), so a new hour has started.
     const { http, api } = client({

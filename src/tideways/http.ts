@@ -15,6 +15,8 @@ export interface RequestOptions {
   scope?: TokenScope;
   /** Human-readable label for error messages, e.g. "performance data of acme/shop". */
   resource: string;
+  /** The endpoint does not count against the hourly limit, so the local fail-fast check is skipped. */
+  uncounted?: boolean;
 }
 
 export interface TidewaysHttpOptions {
@@ -83,7 +85,7 @@ export class TidewaysHttp {
   }
 
   async get(path: string, options: RequestOptions): Promise<unknown> {
-    this.assertWithinRateLimit();
+    if (!options.uncounted) this.assertWithinRateLimit();
     const url = `${this.options.baseUrl}${path}${buildQuery(options.query)}`;
 
     for (let attempt = 1; ; attempt++) {

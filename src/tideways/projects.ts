@@ -118,7 +118,10 @@ export class ProjectResolver {
   }
 
   private async fetchTokenInfo(): Promise<TokenInfo> {
-    const body = await this.http.get('/_token', { resource: 'the token info endpoint (/_token)' });
+    const body = await this.http.get('/_token', {
+      resource: 'the token info endpoint (/_token)',
+      uncounted: true,
+    });
     const parsed = parseResponse(tokenResponseSchema, body, '/_token');
     return {
       scopes: parsed.scopes,

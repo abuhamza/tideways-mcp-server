@@ -43,6 +43,20 @@ describe('tideways_list_projects', () => {
     });
   });
 
+  it('still lists projects after the hourly rate limit is used up', async () => {
+    server = await startTestServer({
+      '/_token': { body: tokenInfo },
+      '/acme/shop/performance': {
+        body: performance,
+        headers: { 'x-ratelimit-remaining': '0' },
+      },
+    });
+    await callTool(server, 'tideways_get_performance');
+    const result = await callTool(server, 'tideways_list_projects');
+    expect(result.isError).toBeUndefined();
+    expect((result.structuredContent as ListProjectsOutput).projects).toHaveLength(2);
+  });
+
   it('turns an invalid token into an actionable tool error', async () => {
     server = await startTestServer({
       '/_token': { status: 401, body: { error: 'Invalid credentials.' } },
