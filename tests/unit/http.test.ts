@@ -172,4 +172,24 @@ describe('TidewaysHttp.get', () => {
     expect(error.message).not.toContain('test-token');
     expect(api.requests).toHaveLength(1);
   });
+
+  it('retries when the response body fails to read, then throws as transport error', async () => {
+    const { http, api } = client({
+      '/a': { bodyThrows: new DOMException('aborted', 'TimeoutError') },
+    });
+    const error = await failure(http.get('/a', { resource: 'x' }));
+    expect(error.kind).toBe('timeout');
+    expect(api.requests).toHaveLength(3); // initial + 2 retries
+  });
+
+  it('succeeds after a body read error when retry succeeds', async () => {
+    const { http, api } = client({
+      '/a': (_url, call) =>
+        call === 1
+          ? { bodyThrows: new DOMException('aborted', 'TimeoutError') }
+          : { body: { ok: true } },
+    });
+    await expect(http.get('/a', { resource: 'x' })).resolves.toEqual({ ok: true });
+    expect(api.requests).toHaveLength(2); // initial failed, retry succeeded
+  });
 });

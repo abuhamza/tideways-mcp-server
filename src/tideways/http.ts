@@ -96,6 +96,7 @@ export class TidewaysHttp {
       };
       const started = this.now();
       let response: Response;
+      let body: Body;
       try {
         response = await this.fetchImpl(url, {
           headers: {
@@ -105,6 +106,7 @@ export class TidewaysHttp {
           },
           signal: AbortSignal.timeout(this.options.timeoutMs),
         });
+        body = await readBody(response);
       } catch (cause) {
         if (attempt <= this.maxRetries) {
           await this.backoff(attempt, path, cause instanceof Error ? cause.name : 'network error');
@@ -115,7 +117,6 @@ export class TidewaysHttp {
 
       const snapshot = parseRateLimit(response.headers);
       if (snapshot) this.rateLimit = snapshot;
-      const body = await readBody(response);
       this.options.logger.debug('tideways request', {
         path,
         status: response.status,

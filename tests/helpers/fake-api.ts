@@ -7,6 +7,8 @@ export interface FakeReply {
   headers?: Record<string, string>;
   /** Throw this instead of responding (simulates network failures and timeouts). */
   throws?: Error;
+  /** Error to throw when reading the response body. */
+  bodyThrows?: Error;
 }
 
 export type FakeRoute = FakeReply | ((url: URL, callNumber: number) => FakeReply);
@@ -56,8 +58,26 @@ export function createFakeApi(routes: Record<string, FakeRoute>): FakeApi {
 
     const status = reply.status ?? 200;
     const counted = status !== 401 && status !== 404 && path !== '/_token';
+    const bodyText = reply.rawBody ?? JSON.stringify(reply.body ?? {});
+
+    // If bodyThrows is set, return a response whose .text() fails
+    if (reply.bodyThrows) {
+      const response = new Response(bodyText, {
+        status,
+        headers: {
+          'content-type': 'application/json',
+          ...(counted ? RATE_HEADERS : {}),
+          ...reply.headers,
+        },
+      });
+      const error = reply.bodyThrows;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-member-access
+      (response as any).text = () => Promise.reject(error);
+      return Promise.resolve(response);
+    }
+
     return Promise.resolve(
-      new Response(reply.rawBody ?? JSON.stringify(reply.body ?? {}), {
+      new Response(bodyText, {
         status,
         headers: {
           'content-type': 'application/json',
