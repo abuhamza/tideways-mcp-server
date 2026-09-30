@@ -34,7 +34,11 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
       title: 'Tideways',
       version: pkg.version,
     });
-    expect(server.client.getInstructions()).toBe(SERVER_INSTRUCTIONS);
+    const instructions = server.client.getInstructions();
+    expect(instructions).toBe(SERVER_INSTRUCTIONS);
+    expect(instructions).toBeTypeOf('string');
+    for (const name of TOOL_NAMES) expect(instructions).toContain(name);
+    expect(instructions).toContain('UTC');
     expect(server.client.getServerCapabilities()).toEqual({ tools: { listChanged: false } });
   });
 

@@ -103,11 +103,15 @@ describe('built binary over stdio', () => {
 
   it('prints version and help without starting the server', async () => {
     const version = run(['--version'], { PATH: env.PATH });
-    await once(version.child, 'exit');
+    const [versionCode] = (await once(version.child, 'exit')) as [number | null];
+    expect(versionCode).toBe(0);
     expect(version.output().stdout).toBe(`${pkg.version}\n`);
+    expect(version.output().stderr).toBe('');
 
     const help = run(['--help'], { PATH: env.PATH });
-    await once(help.child, 'exit');
+    const [helpCode] = (await once(help.child, 'exit')) as [number | null];
+    expect(helpCode).toBe(0);
     expect(help.output().stdout).toContain('TIDEWAYS_TOKEN');
+    expect(help.output().stderr).toBe('');
   });
 });
