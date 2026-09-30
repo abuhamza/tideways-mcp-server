@@ -91,7 +91,7 @@ The server reads only its environment; it does not load `.env` files.
 ## Good to know
 
 - All times are UTC, written `YYYY-MM-DD HH:mm`.
-- The Tideways API rate limit is per token and per clock hour, shared by all projects. `tideways_list_projects` shows the remaining budget; a limit error names the reset time.
+- The Tideways API rate limit is per token and per clock hour, shared by all projects. `tideways_list_projects` reports the rate-limit status seen on the most recent counted request of the session (null before the first one); a limit error names the reset time.
 - `tideways_search_traces` returns at most 30 traces per call (an API limit); narrow the time window or sort by response time to find others.
 - Issues have no "all" filter in the API: ask for one type (`error`, `slowsql`, `deprecated`) and one status at a time.
 
