@@ -6,6 +6,7 @@ import { registerListIssuesTool } from './tools/issues.js';
 import { registerListProjectsTool } from './tools/list-projects.js';
 import { registerPerformanceSummaryTool } from './tools/performance-summary.js';
 import { registerPerformanceTool } from './tools/performance.js';
+import { registerSearchTracesTool } from './tools/traces.js';
 
 /** Build one MCP server instance. The stdio entry calls this once per connection. */
 export function createServer(ctx: ToolContext): McpServer {
@@ -17,5 +18,6 @@ export function createServer(ctx: ToolContext): McpServer {
   registerPerformanceTool(server, ctx);
   registerPerformanceSummaryTool(server, ctx);
   registerListIssuesTool(server, ctx);
+  registerSearchTracesTool(server, ctx);
   return server;
 }
