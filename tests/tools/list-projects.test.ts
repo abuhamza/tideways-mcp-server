@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ListProjectsOutput } from '../../src/tools/list-projects.js';
-import { tokenInfo } from '../fixtures/tideways.js';
+import { performance, tokenInfo } from '../fixtures/tideways.js';
 import { callTool, startTestServer, textOf, type TestServer } from '../helpers/harness.js';
 
 describe('tideways_list_projects', () => {
@@ -27,6 +27,20 @@ describe('tideways_list_projects', () => {
       rateLimit: null,
     } satisfies ListProjectsOutput);
     expect(JSON.parse(textOf(result))).toEqual(result.structuredContent);
+  });
+
+  it('reports the last seen rate limit', async () => {
+    server = await startTestServer({
+      '/_token': { body: tokenInfo },
+      '/acme/shop/performance': { body: performance },
+    });
+    await callTool(server, 'tideways_get_performance');
+    const result = await callTool(server, 'tideways_list_projects');
+    expect((result.structuredContent as ListProjectsOutput).rateLimit).toEqual({
+      limit: 5000,
+      remaining: 4999,
+      resetAt: '2026-09-30T13:00:00.000Z',
+    });
   });
 
   it('turns an invalid token into an actionable tool error', async () => {
