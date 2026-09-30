@@ -70,5 +70,6 @@
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
     "clean": "node -e \"for (const d of ['dist','coverage']) require('node:fs').rmSync(d,{recursive:true,force:true})\"",
     "prepack": "npm run build"
-  }
+  },
+  "mcpName": "io.github.abuhamza/tideways-mcp-server"
 }
