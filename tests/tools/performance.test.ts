@@ -47,6 +47,36 @@ describe('tideways_get_performance', () => {
     expect(data.raw).toBeUndefined();
   });
 
+  it('treats PHP empty arrays for empty maps as zero traffic', async () => {
+    server = await startTestServer({
+      '/acme/shop/performance': {
+        body: {
+          application: {
+            by_time: [],
+            by_transactions: [],
+            total: {
+              error_rate: 0,
+              requests: 0,
+              response_time: 0,
+              average: 0,
+              median: 0,
+              downstream: [],
+            },
+          },
+        },
+      },
+    });
+    const result = await callTool(server, 'tideways_get_performance');
+    expect(result.isError).toBeUndefined();
+    const data = result.structuredContent as PerformanceOutput;
+    expect(data.totals).toMatchObject({
+      requests: 0,
+      errorRatePercent: 0,
+      downstreamAverageMs: {},
+    });
+    expect(data.timeline).toEqual([]);
+  });
+
   it('sends only the parameters that are set and uses configured defaults', async () => {
     server = await startTestServer(
       { '/acme/shop/performance': { body: performance } },
@@ -160,6 +190,18 @@ describe('tideways_get_performance_summary', () => {
     expect(data.window).toEqual({ hours: 24, from: '2026-09-29 12:45', to: '2026-09-30 12:00' });
     expect(data.buckets).toHaveLength(94);
     expect(server.api.requests[0]?.url.search).toBe('?env=staging');
+  });
+
+  it('treats a PHP empty array for by_time as an empty summary', async () => {
+    server = await startTestServer({
+      '/acme/shop/summary': { body: { summary: { by_time: [] } } },
+    });
+    const result = await callTool(server, 'tideways_get_performance_summary');
+    expect(result.isError).toBeUndefined();
+    expect(result.structuredContent as PerformanceSummaryOutput).toMatchObject({
+      totals: { requests: 0 },
+      buckets: [],
+    });
   });
 
   it('handles an empty summary', async () => {

@@ -62,6 +62,15 @@ describe('tideways_get_history', () => {
     expect(server.api.requests).toHaveLength(0);
   });
 
+  it('treats a PHP empty array for by_time as an empty timeline', async () => {
+    server = await startTestServer({
+      '/acme/shop/history/2026-09-29': { body: { history: { by_time: [] } } },
+    });
+    const result = await callTool(server, 'tideways_get_history', { date: '2026-09-29' });
+    expect(result.isError).toBeUndefined();
+    expect(result.structuredContent as GetHistoryOutput).toMatchObject({ timeline: [] });
+  });
+
   it('tolerates a sparse response and includes raw with detail=full', async () => {
     server = await startTestServer({ '/acme/shop/history/2026-09-01/month': { body: {} } });
     const data = (

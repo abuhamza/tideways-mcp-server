@@ -3,7 +3,7 @@ import * as z from 'zod/v4';
 
 import type { ToolContext } from '../context.js';
 import { apiPath } from '../tideways/http.js';
-import { num, parseResponse, text } from '../tideways/parse.js';
+import { num, parseResponse, phpMap, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import {
   apiMinuteParam,
@@ -30,12 +30,9 @@ const criteriaSchema = z.object({
 
 const performanceResponse = z.object({
   application: z.object({
-    by_time: z
-      .record(
-        z.string(),
-        z.object({ requests: num, errors: num, percentile_95p: num, median: num, average: num })
-      )
-      .default({}),
+    by_time: phpMap(
+      z.object({ requests: num, errors: num, percentile_95p: num, median: num, average: num })
+    ).default({}),
     by_transactions: z
       .array(
         z.object({
@@ -56,7 +53,7 @@ const performanceResponse = z.object({
         response_time: num,
         average: num,
         median: num,
-        downstream: z.record(z.string(), z.object({ average: num })).default({}),
+        downstream: phpMap(z.object({ average: num })).default({}),
       })
       .optional(),
     criteria: criteriaSchema.optional(),

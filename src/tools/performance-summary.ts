@@ -3,7 +3,7 @@ import * as z from 'zod/v4';
 
 import type { ToolContext } from '../context.js';
 import { apiPath } from '../tideways/http.js';
-import { num, parseResponse, text } from '../tideways/parse.js';
+import { num, parseResponse, phpMap, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import { parseApiMinute } from '../tideways/time.js';
 import {
@@ -24,9 +24,7 @@ import {
 
 const summaryResponse = z.object({
   summary: z.object({
-    by_time: z
-      .record(z.string(), z.object({ requests: num, errors: num, percentile_95p: num }))
-      .default({}),
+    by_time: phpMap(z.object({ requests: num, errors: num, percentile_95p: num })).default({}),
     criteria: z.object({ start: text, end: text, environment: text, service: text }).optional(),
   }),
 });

@@ -14,6 +14,16 @@ export const text = z
   .nullish()
   .transform(value => value ?? null);
 
+const isEmptyArray = (value: unknown) => Array.isArray(value) && value.length === 0;
+
+/** Map of values; PHP encodes an empty map as `[]`, which becomes `{}`. */
+export const phpMap = <T extends z.ZodType>(value: T) =>
+  z.preprocess(input => (isEmptyArray(input) ? {} : input), z.record(z.string(), value));
+
+/** Wraps an optional or nullish object schema; PHP's empty `[]` becomes undefined. */
+export const phpObject = <T extends z.ZodType>(schema: T) =>
+  z.preprocess(input => (isEmptyArray(input) ? undefined : input), schema);
+
 /** Validate a Tideways response body against the shape this server relies on. */
 export function parseResponse<T extends z.ZodType>(
   schema: T,

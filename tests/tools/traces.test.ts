@@ -49,6 +49,21 @@ describe('tideways_search_traces', () => {
     expect(textOf(result)).not.toContain('token=abc');
   });
 
+  it('accepts PHP empty arrays for http and _links on non-web traces', async () => {
+    server = await startTestServer({
+      '/acme/shop/traces': { body: { traces: [trace({ http: [], _links: [] })] } },
+    });
+    const result = await callTool(server, 'tideways_search_traces');
+    expect(result.isError).toBeUndefined();
+    const data = result.structuredContent as SearchTracesOutput;
+    expect(data.count).toBe(1);
+    expect(data.traces[0]).toMatchObject({
+      id: 'AbCdEfGhIjKlMnOpQrSt',
+      httpMethod: null,
+      link: null,
+    });
+  });
+
   it('maps every filter to the API parameter names', async () => {
     server = await startTestServer({ '/acme/shop/traces': { body: { traces: [] } } });
     await callTool(server, 'tideways_search_traces', {
