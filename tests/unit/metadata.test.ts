@@ -41,6 +41,7 @@ describe('distribution metadata', () => {
   it('keeps the registry name and versions in sync with package.json', () => {
     expect(pkg.mcpName).toBe(serverJson.name);
     expect(serverJson.version).toBe(pkg.version);
+    expect(serverJson.packages[0]?.registryType).toBe('npm');
     expect(serverJson.packages.find(p => p.registryType === 'npm')).toMatchObject({
       identifier: pkg.name,
       version: pkg.version,
