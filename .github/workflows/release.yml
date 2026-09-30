@@ -232,9 +232,10 @@ jobs:
     needs: [release-please, publish-npm, mcpb, docker]
     # Opt-in: set repository variable MCP_REGISTRY_PUBLISH=true once the GHCR package is public
     # (the registry pulls the image anonymously to verify its label).
+    # Manual dispatch runs only from main: the job holds id-token: write.
     if: >-
       always() && vars.MCP_REGISTRY_PUBLISH == 'true' && (
-        github.event_name == 'workflow_dispatch' || (
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (
           needs.release-please.outputs.release_created == 'true' &&
           needs.publish-npm.result == 'success' &&
           needs.mcpb.result == 'success' &&
