@@ -113,11 +113,9 @@ export class TidewaysHttp {
         throw errorForTransport(cause, context);
       }
 
-      // Parse rate-limit headers immediately after fetch resolves, before reading body
       const snapshot = parseRateLimit(response.headers);
       if (snapshot) this.rateLimit = snapshot;
 
-      // Try to read the response body
       let body: Body;
       try {
         body = await readBody(response);
@@ -126,7 +124,6 @@ export class TidewaysHttp {
         if (response.status === 429) {
           throw errorForStatus(429, undefined, context, this.rateLimit);
         }
-        // Other statuses: retry on body read failure
         if (attempt <= this.maxRetries) {
           await this.backoff(attempt, path, cause instanceof Error ? cause.name : 'network error');
           continue;

@@ -12,8 +12,8 @@ import { registerSearchTracesTool } from './tools/traces.js';
 
 export const SERVER_INSTRUCTIONS = [
   'Read-only access to Tideways, a performance monitoring service for PHP applications.',
-  'All times are UTC in "YYYY-MM-DD HH:mm". Every tool accepts an optional "project"; call',
-  'tideways_list_projects when unsure which projects exist or after a scope/project error.',
+  'All times are UTC in "YYYY-MM-DD HH:mm". Every tool except tideways_list_projects accepts an optional',
+  '"project"; call tideways_list_projects when unsure which projects exist or after a scope/project error.',
   'Pick the tool by question: current health and top transactions -> tideways_get_performance;',
   '15-minute trends over up to 30 days -> tideways_get_performance_summary; past day/week/month',
   'reports -> tideways_get_history; errors, slow SQL, deprecations -> tideways_list_issues;',
