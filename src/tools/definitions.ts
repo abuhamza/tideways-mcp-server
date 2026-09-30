@@ -56,15 +56,16 @@ export function getToolDefinitions(): Tool[] {
         properties: {
           issue_type: {
             type: 'string',
-            enum: ['error', 'slowsql', 'deprecated', 'all'],
-            default: 'all',
-            description: 'Type of issues to retrieve (fixed enum values to match API)',
+            enum: ['error', 'slowsql', 'deprecated'],
+            default: 'error',
+            description:
+              'Type of issues: error (exceptions), slowsql (slow SQL queries) or deprecated. The API has no "all"; call once per type.',
           },
           status: {
             type: 'string',
-            enum: ['open', 'new', 'resolved', 'not_error', 'ignored', 'all'],
+            enum: ['open', 'new', 'resolved', 'not_error', 'ignored'],
             default: 'open',
-            description: 'Issue status filter (updated to match API statuses)',
+            description: 'Issue status filter. The API has no "all"; call once per status.',
           },
           page: {
             type: 'number',

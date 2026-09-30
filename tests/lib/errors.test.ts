@@ -20,11 +20,13 @@ describe('TidewaysAPIError', () => {
 describe('ErrorHandler', () => {
   describe('handleApiError', () => {
     it('should handle rate limit errors', () => {
+      // X-RateLimit-Reset is a Unix epoch in seconds (the next full hour), not a duration.
+      const resetEpochSeconds = Math.floor(Date.now() / 1000) + 600;
       const mockError = {
         response: {
           status: 429,
           headers: {
-            'x-ratelimit-reset': '1000',
+            'x-ratelimit-reset': String(resetEpochSeconds),
           },
         },
         config: { url: '/test', method: 'get' },
@@ -35,7 +37,26 @@ describe('ErrorHandler', () => {
       expect(result).toBeInstanceOf(TidewaysAPIError);
       expect(result.category).toBe('rate_limit');
       expect(result.statusCode).toBe(429);
-      expect(result.retryAfter).toBe(1000000); // Converted to milliseconds
+      expect(result.retryAfter).toBeGreaterThan(590_000);
+      expect(result.retryAfter).toBeLessThanOrEqual(600_000);
+      expect(ErrorHandler.formatErrorForUser(result)).toContain(
+        new Date(resetEpochSeconds * 1000).toISOString().slice(0, 16)
+      );
+    });
+
+    it('should not report a negative wait when the reset time has passed', () => {
+      const mockError = {
+        response: { status: 429, headers: { 'x-ratelimit-reset': '1000' } },
+        config: { url: '/test', method: 'get' },
+      };
+
+      expect(ErrorHandler.handleApiError(mockError).retryAfter).toBe(0);
+    });
+
+    it('should pass through errors that are already mapped', () => {
+      const mapped = new TidewaysAPIError('Authentication failed. Please check your API token.', 'auth', 401);
+
+      expect(ErrorHandler.handleApiError(mapped)).toBe(mapped);
     });
 
     it('should handle authentication errors', () => {
@@ -184,21 +205,22 @@ describe('ErrorHandler', () => {
     it('should identify retryable errors', () => {
       const networkError = new TidewaysAPIError('Network error', 'network');
       const serverError = new TidewaysAPIError('Server error', 'api', 500);
-      const rateLimitError = new TidewaysAPIError('Rate limit', 'rate_limit', 429);
 
       expect(ErrorHandler.isRetryable(networkError)).toBe(true);
       expect(ErrorHandler.isRetryable(serverError)).toBe(true);
-      expect(ErrorHandler.isRetryable(rateLimitError)).toBe(true);
     });
 
     it('should identify non-retryable errors', () => {
       const authError = new TidewaysAPIError('Auth error', 'auth', 401);
       const validationError = new TidewaysAPIError('Validation error', 'validation');
       const clientError = new TidewaysAPIError('Client error', 'api', 400);
+      // The hourly limit only resets at the top of the hour; retrying just burns time.
+      const rateLimitError = new TidewaysAPIError('Rate limit', 'rate_limit', 429);
 
       expect(ErrorHandler.isRetryable(authError)).toBe(false);
       expect(ErrorHandler.isRetryable(validationError)).toBe(false);
       expect(ErrorHandler.isRetryable(clientError)).toBe(false);
+      expect(ErrorHandler.isRetryable(rateLimitError)).toBe(false);
     });
   });
 

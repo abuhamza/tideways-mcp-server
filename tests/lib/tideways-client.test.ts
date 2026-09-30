@@ -201,9 +201,19 @@ describe('TidewaysClient', () => {
       const result = await client.getIssues({ page: 1 });
 
       expect(mockAxiosInstance.get).toHaveBeenCalledWith('/test-org/test-project/issues', {
-        params: { status: 'open', page: 1 },
+        params: { status: 'open', page: 1, issueType: 'error' },
       });
       expect(result).toEqual(mockResponse);
+    });
+
+    it('should pass the requested issue type through', async () => {
+      mockAxiosInstance.get.mockResolvedValue({ data: mockResponse });
+
+      await client.getIssues({ issue_type: 'slowsql', status: 'resolved', page: 2 });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/test-org/test-project/issues', {
+        params: { status: 'resolved', page: 2, issueType: 'slowsql' },
+      });
     });
   });
 

@@ -53,6 +53,20 @@ describe('Tool Definitions', () => {
     });
 
 
+    it('should only offer issue filters the Tideways API supports', () => {
+      const tool = tools.find(t => t.name === 'get_issues');
+      const properties = tool!.inputSchema.properties as Record<
+        string,
+        { enum?: string[]; default?: string }
+      >;
+
+      // The API has no "all": issueType=all was dropped (errors only) and status=all became "open".
+      expect(properties.issue_type.enum).toEqual(['error', 'slowsql', 'deprecated']);
+      expect(properties.issue_type.default).toBe('error');
+      expect(properties.status.enum).toEqual(['open', 'new', 'resolved', 'not_error', 'ignored']);
+      expect(properties.status.default).toBe('open');
+    });
+
     it('should have proper description for historical data tool', () => {
       const historicalTool = tools.find(t => t.name === 'get_historical_data');
       
