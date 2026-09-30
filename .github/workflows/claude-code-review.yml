@@ -40,9 +40,18 @@ jobs:
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@fd1c128679612beff4ca259c78021c506e8aa7a7 # v1.0.237
+        env:
+          # The action ends the run at the first result message, which kills background
+          # subagents before the plugin gets to review or comment (the job still passes).
+          # Foreground subagents keep the whole review inside one turn.
+          # https://github.com/anthropics/claude-code-action/issues/1499
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
+          # The tools the plugin's command declares, plus Skill so the command itself can load.
+          claude_args: >-
+            --allowedTools "Skill,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),mcp__github_inline_comment__create_inline_comment"
+            --append-system-prompt "This is a non-interactive CI run: ending your turn ends the run. Run subagents in the foreground and wait for their results. Do not schedule wakeups. Do not end your turn while a subagent is running or before the command's last step has run."
