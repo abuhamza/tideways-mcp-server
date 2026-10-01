@@ -1,0 +1,106 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.abuhamza/tideways-mcp-server",
+  "title": "Tideways",
+  "description": "Read-only access to Tideways PHP performance monitoring: performance, issues, traces, history.",
+  "websiteUrl": "https://github.com/abuhamza/tideways-mcp-server#readme",
+  "repository": {
+    "url": "https://github.com/abuhamza/tideways-mcp-server",
+    "source": "github"
+  },
+  "version": "1.2.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "tideways-mcp-server",
+      "version": "1.2.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "TIDEWAYS_TOKEN",
+          "description": "Tideways API token (Organization settings → API Access; scopes metrics, traces, errors).",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "TIDEWAYS_ORG",
+          "description": "Tideways organization (optional; derived from the token).",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "TIDEWAYS_PROJECT",
+          "description": "Default project, \"project\" or \"organization/project\" (optional if the token reaches one project).",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "TIDEWAYS_ENV",
+          "description": "Default environment, e.g. production (optional).",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "TIDEWAYS_SERVICE",
+          "description": "Default service, e.g. web (optional; API default is the project's default service).",
+          "isRequired": false,
+          "format": "string"
+        }
+      ]
+    },
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/abuhamza/tideways-mcp-server:1.2.0",
+      "runtimeHint": "docker",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "TIDEWAYS_TOKEN",
+          "description": "Tideways API token (Organization settings → API Access; scopes metrics, traces, errors).",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "TIDEWAYS_ORG",
+          "description": "Tideways organization (optional; derived from the token).",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "TIDEWAYS_PROJECT",
+          "description": "Default project, \"project\" or \"organization/project\" (optional if the token reaches one project).",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "TIDEWAYS_ENV",
+          "description": "Default environment, e.g. production (optional).",
+          "isRequired": false,
+          "format": "string"
+        },
+        {
+          "name": "TIDEWAYS_SERVICE",
+          "description": "Default service, e.g. web (optional; API default is the project's default service).",
+          "isRequired": false,
+          "format": "string"
+        }
+      ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/abuhamza/tideways-mcp-server/releases/download/v1.2.0/tideways-mcp-server-1.2.0.mcpb",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

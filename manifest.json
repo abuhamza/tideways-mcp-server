@@ -1,0 +1,127 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/mcpb/v2.1.2/schemas/mcpb-manifest-v0.3.schema.json",
+  "manifest_version": "0.3",
+  "name": "tideways-mcp-server",
+  "display_name": "Tideways",
+  "version": "1.2.0",
+  "description": "Query Tideways PHP performance monitoring data (performance, issues, traces, history) from your AI assistant.",
+  "long_description": "Read-only MCP server for [Tideways](https://tideways.com/). Seven tools cover the token's projects, per-minute performance and top transactions, 15-minute summaries over 30 days, error/slow-SQL/deprecation issues, individual traces, day/week/month reports and automatic configuration and bottleneck observations.",
+  "author": {
+    "name": "Mouhammed Diop",
+    "url": "https://github.com/abuhamza"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abuhamza/tideways-mcp-server.git"
+  },
+  "homepage": "https://github.com/abuhamza/tideways-mcp-server#readme",
+  "documentation": "https://github.com/abuhamza/tideways-mcp-server#readme",
+  "support": "https://github.com/abuhamza/tideways-mcp-server/issues",
+  "license": "MIT",
+  "keywords": [
+    "tideways",
+    "apm",
+    "performance",
+    "monitoring",
+    "php",
+    "observability"
+  ],
+  "privacy_policies": [
+    "https://tideways.com/privacy"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/dist/index.js"
+      ],
+      "env": {
+        "TIDEWAYS_TOKEN": "${user_config.api_token}",
+        "TIDEWAYS_ORG": "${user_config.organization}",
+        "TIDEWAYS_PROJECT": "${user_config.project}",
+        "TIDEWAYS_ENV": "${user_config.environment}",
+        "TIDEWAYS_SERVICE": "${user_config.service}"
+      }
+    }
+  },
+  "tools_generated": false,
+  "tools": [
+    {
+      "name": "tideways_list_projects",
+      "description": "Projects, scopes and rate-limit status of the API token"
+    },
+    {
+      "name": "tideways_get_performance",
+      "description": "Per-minute performance and top transactions for the last 1-1440 minutes"
+    },
+    {
+      "name": "tideways_get_performance_summary",
+      "description": "15-minute requests, errors and p95 over up to 30 days"
+    },
+    {
+      "name": "tideways_list_issues",
+      "description": "Errors, slow SQL and deprecations, 10 per page"
+    },
+    {
+      "name": "tideways_search_traces",
+      "description": "Individual request traces with bottlenecks and slowest layers"
+    },
+    {
+      "name": "tideways_get_history",
+      "description": "Day, week or month performance report"
+    },
+    {
+      "name": "tideways_get_observations",
+      "description": "Configuration and code bottleneck findings"
+    }
+  ],
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=22.0.0"
+    }
+  },
+  "user_config": {
+    "api_token": {
+      "type": "string",
+      "title": "Tideways API token",
+      "description": "API token created under Organization settings → API Access (scopes: metrics, traces, errors).",
+      "sensitive": true,
+      "required": true
+    },
+    "organization": {
+      "type": "string",
+      "title": "Organization",
+      "description": "Tideways organization (optional; derived from the token).",
+      "required": false,
+      "default": ""
+    },
+    "project": {
+      "type": "string",
+      "title": "Project",
+      "description": "Default project, \"project\" or \"organization/project\" (optional if the token reaches one project).",
+      "required": false,
+      "default": ""
+    },
+    "environment": {
+      "type": "string",
+      "title": "Environment",
+      "description": "Default environment, e.g. production (optional).",
+      "required": false,
+      "default": ""
+    },
+    "service": {
+      "type": "string",
+      "title": "Service",
+      "description": "Default service, e.g. web (optional; API default is the project's default service).",
+      "required": false,
+      "default": ""
+    }
+  }
+}

@@ -27,6 +27,7 @@
   "author": "Mouhammed Diop",
   "license": "MIT",
   "devDependencies": {
+    "@anthropic-ai/mcpb": "2.1.2",
     "@commitlint/cli": "^18.4.0",
     "@commitlint/config-conventional": "^18.4.0",
     "@eslint/js": "^10.0.1",
@@ -40,6 +41,11 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.0",
     "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "external-editor": {
+      "tmp": "^0.2.6"
+    }
   },
   "engines": {
     "node": ">=22"
@@ -70,5 +76,6 @@
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
     "clean": "node -e \"for (const d of ['dist','coverage']) require('node:fs').rmSync(d,{recursive:true,force:true})\"",
     "prepack": "npm run build"
-  }
+  },
+  "mcpName": "io.github.abuhamza/tideways-mcp-server"
 }
