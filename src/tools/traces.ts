@@ -51,7 +51,7 @@ const tracesResponse = z.object({
     .default([]),
 });
 
-export const searchTracesInput = z.object({
+export const searchTracesInput = z.strictObject({
   project: projectParam,
   environment: environmentParam,
   service: serviceParam,

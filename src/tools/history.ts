@@ -42,7 +42,7 @@ const historyResponse = z.object({
     .default([]),
 });
 
-export const getHistoryInput = z.object({
+export const getHistoryInput = z.strictObject({
   project: projectParam,
   date: apiDateParam.describe(
     'Day to report, "YYYY-MM-DD". For week the API uses the Monday of that week, for month the 1st.'

@@ -46,7 +46,7 @@ export function registerListProjectsTool(server: McpServer, ctx: ToolContext): v
       description:
         'List the projects, scopes and rate-limit status of the configured Tideways API token. ' +
         'Call this first when unsure which project to use, or after a scope or unknown-project error.',
-      inputSchema: z.object({}),
+      inputSchema: z.strictObject({}),
       outputSchema: listProjectsOutput,
       annotations: READ_ONLY_ANNOTATIONS,
     },

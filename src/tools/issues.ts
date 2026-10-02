@@ -52,7 +52,7 @@ const issuesResponse = z.object({
     .optional(),
 });
 
-export const listIssuesInput = z.object({
+export const listIssuesInput = z.strictObject({
   project: projectParam,
   environment: environmentParam,
   type: z

@@ -8,7 +8,7 @@ import { createToolContext } from '../../src/context.js';
 import { createLogger } from '../../src/logger.js';
 import { createServer, SERVER_INSTRUCTIONS } from '../../src/server.js';
 import { createFakeApi } from '../helpers/fake-api.js';
-import { startTestServer, type TestServer } from '../helpers/harness.js';
+import { callTool, startTestServer, textOf, type TestServer } from '../helpers/harness.js';
 
 const TOOL_NAMES = [
   'tideways_list_projects',
@@ -143,5 +143,37 @@ describe('MCP server surface (2026-07-28 protocol)', () => {
       await client.close();
       await handler.close();
     }
+  });
+});
+
+describe('strict inputs', () => {
+  let server: TestServer | undefined;
+  afterEach(async () => {
+    await server?.close();
+    server = undefined;
+  });
+
+  it('advertises additionalProperties: false on every input schema', async () => {
+    server = await startTestServer({});
+    const { tools } = await server.client.listTools();
+    for (const tool of tools) {
+      expect(tool.inputSchema.additionalProperties, tool.name).toBe(false);
+    }
+  });
+
+  it.each([
+    ['tideways_list_projects', 'service'],
+    ['tideways_list_issues', 'service'],
+    ['tideways_get_history', 'environment'],
+    ['tideways_get_performance', 'bogus'],
+    ['tideways_get_observations', 'bogus'],
+    ['tideways_search_traces', 'bogus'],
+  ])('%s rejects the unknown argument "%s" by name', async (tool, key) => {
+    server = await startTestServer({});
+    const args = tool === 'tideways_get_history' ? { date: '2026-09-29' } : {};
+    const result = await callTool(server, tool, { ...args, [key]: 'x' });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain(key);
+    expect(server.api.requests).toHaveLength(0);
   });
 });

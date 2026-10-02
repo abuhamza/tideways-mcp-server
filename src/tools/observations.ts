@@ -31,7 +31,7 @@ const observationsResponse = z.object({
   criteria: z.object({ environment: text, service: text, status: text }).optional(),
 });
 
-export const getObservationsInput = z.object({
+export const getObservationsInput = z.strictObject({
   project: projectParam,
   environment: environmentParam,
   service: serviceParam,

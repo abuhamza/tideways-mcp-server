@@ -60,7 +60,7 @@ const performanceResponse = z.object({
   }),
 });
 
-export const performanceInput = z.object({
+export const performanceInput = z.strictObject({
   project: projectParam,
   environment: environmentParam,
   service: serviceParam,

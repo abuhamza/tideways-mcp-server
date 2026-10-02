@@ -29,7 +29,7 @@ const summaryResponse = z.object({
   }),
 });
 
-export const performanceSummaryInput = z.object({
+export const performanceSummaryInput = z.strictObject({
   project: projectParam,
   environment: environmentParam,
   service: serviceParam,
