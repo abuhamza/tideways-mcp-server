@@ -113,8 +113,7 @@ export const searchTracesOutput = z.object({
         .array(z.string())
         .describe(
           'Bottlenecks Tideways detected in this trace, e.g. "nplus1" (N+1 queries or calls; the ' +
-            'observation bottleneck-nplus1), "wait", "sql", "http". There is no filter for them; ' +
-            'scan several windows.'
+            'observation bottleneck-nplus1), "wait", "sql", "http". There is no filter for them.'
         ),
       topLayers: z
         .array(

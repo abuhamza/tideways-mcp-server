@@ -107,6 +107,25 @@ describe('tideways_list_services', () => {
     ]);
   });
 
+  it('uses the configured environment for issues and searches', async () => {
+    server = await startTestServer(
+      {
+        '/acme/shop/issues': url => ({
+          body: issuesNaming([], { environment: url.searchParams.get('env') }),
+        }),
+        '/acme/shop/traces': { body: { traces: [] } },
+      },
+      { TIDEWAYS_ENV: 'staging' }
+    );
+    await callTool(server, 'tideways_list_services', { search: 'cart' });
+    expect(server.api.requests.map(request => request.url.searchParams.get('env'))).toEqual([
+      'staging',
+      'staging',
+      'staging',
+      'staging',
+    ]);
+  });
+
   it('fails when Tideways answers for another environment', async () => {
     server = await startTestServer({ '/acme/shop/issues': issuesByType({}) });
     const result = await callTool(server, 'tideways_list_services', { environment: 'qa' });
@@ -165,13 +184,14 @@ describe('tideways_list_services', () => {
     expect(textOf(result)).not.toContain('code=secret');
   });
 
-  it('reports a failed service search and keeps the other results', async () => {
+  it('reports a failed service search last and keeps the other results', async () => {
     server = await startTestServer({
-      '/acme/shop/issues': issuesByType({ error: issuesNaming([['flaky']]) }),
-      '/acme/shop/traces': url =>
-        url.searchParams.get('s') === 'flaky'
-          ? { status: 502, body: { error: 'Bad gateway' } }
-          : { body: { traces: [trace()] } },
+      '/acme/shop/issues': issuesByType({ error: issuesNaming([['flaky'], ['flaky', 'quiet']]) }),
+      '/acme/shop/traces': url => {
+        const service = url.searchParams.get('s');
+        if (service === 'flaky') return { status: 502, body: { error: 'Bad gateway' } };
+        return { body: { traces: service === 'web' ? [trace()] : [] } };
+      },
     });
     const data = (await callTool(server, 'tideways_list_services', { search: 'cart' }))
       .structuredContent as ListServicesOutput;
@@ -187,9 +207,10 @@ describe('tideways_list_services', () => {
         },
         searchError: null,
       },
+      { name: 'quiet', issues: 1, matchingTraces: 0, example: null, searchError: null },
       {
         name: 'flaky',
-        issues: 1,
+        issues: 2,
         matchingTraces: null,
         example: null,
         searchError: expect.stringContaining('HTTP 502') as string,
@@ -204,18 +225,53 @@ describe('tideways_list_services', () => {
     });
     const data = (await callTool(server, 'tideways_list_services', { search: 'cart' }))
       .structuredContent as ListServicesOutput;
-    expect(data.services[1]).toEqual({
+    expect(data.services[1]).toMatchObject({
       name: 'retired',
-      issues: 1,
       matchingTraces: null,
       example: null,
-      searchError: expect.stringMatching(
-        /no service "retired" in production .*default service "web"/
-      ) as string,
     });
+    expect(data.services[1]?.searchError).toMatch(
+      /does not know service "retired" in production and answered for "web"/
+    );
+    expect(data.services[1]?.searchError).not.toContain('tideways_list_services');
+  });
+
+  it('fails the whole call when a service search answers for another environment', async () => {
+    server = await startTestServer({
+      '/acme/shop/issues': url => ({
+        body: issuesNaming([['worker']], { environment: url.searchParams.get('env') }),
+      }),
+      '/acme/shop/traces': { body: { traces: [trace()] } },
+    });
+    const result = await callTool(server, 'tideways_list_services', {
+      environment: 'staging',
+      search: 'cart',
+    });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toMatch(/no environment "staging" and answered for "production"/);
+  });
+
+  it('keeps the default service first among services with equal matches', async () => {
+    server = await startTestServer({
+      '/acme/shop/issues': issuesByType({ error: issuesNaming([['api'], ['api']]) }),
+      '/acme/shop/traces': url => ({
+        body: {
+          traces: Array.from({ length: 30 }, (_, i) =>
+            voucherTrace(url.searchParams.get('s') ?? '', 59 - i)
+          ),
+        },
+      }),
+    });
+    const data = (await callTool(server, 'tideways_list_services', { search: 'voucher' }))
+      .structuredContent as ListServicesOutput;
+    expect(data.services.map(s => [s.name, s.matchingTraces])).toEqual([
+      ['web', 30],
+      ['api', 30],
+    ]);
   });
 
   it.each([
+    [401, /rejected the API token/],
     [403, /needs the "traces" scope/],
     [429, /rate limit reached/],
   ])('fails the whole call on HTTP %i from a service search', async (status, message) => {
@@ -229,6 +285,35 @@ describe('tideways_list_services', () => {
     const result = await callTool(server, 'tideways_list_services', { search: 'voucher' });
     expect(result.isError).toBe(true);
     expect(textOf(result)).toMatch(message);
+  });
+
+  it('starts no new service searches after a fatal error', async () => {
+    server = await startTestServer({
+      '/acme/shop/issues': issuesByType({
+        error: issuesNaming([['a'], ['b'], ['c'], ['d'], ['e'], ['f'], ['g'], ['h'], ['i']]),
+      }),
+      '/acme/shop/traces': async url => {
+        if (url.searchParams.get('s') === 'web')
+          return { status: 429, body: { error: 'Slow down' } };
+        await new Promise(resolve => setTimeout(resolve, 5));
+        return { body: { traces: [] } };
+      },
+    });
+    const result = await callTool(server, 'tideways_list_services', { search: 'voucher' });
+    expect(result.isError).toBe(true);
+    expect(traceQueries(server)).toHaveLength(4);
+  });
+
+  it('searches fewer services when the hourly rate limit is nearly used up', async () => {
+    const pages = issuesByType({ error: issuesNaming([['a'], ['b'], ['c'], ['d']]) });
+    server = await startTestServer({
+      '/acme/shop/issues': url => ({ ...pages(url), headers: { 'x-ratelimit-remaining': '13' } }),
+      '/acme/shop/traces': { body: { traces: [] } },
+    });
+    const data = (await callTool(server, 'tideways_list_services', { search: 'voucher' }))
+      .structuredContent as ListServicesOutput;
+    expect(traceQueries(server).map(query => query.s)).toEqual(['web', 'a', 'b']);
+    expect(data.search).toEqual({ word: 'voucher', searched: 3, notSearched: 2 });
   });
 
   it('searches at most 30 services, the default and the most mentioned first', async () => {

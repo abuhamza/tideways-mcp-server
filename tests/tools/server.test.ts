@@ -106,6 +106,7 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     ).traces?.items?.properties;
     expect(traceItem?.bottlenecks?.description).toContain('nplus1');
     expect(traceItem?.bottlenecks?.description).toContain('no filter');
+    expect(traceItem?.bottlenecks?.description).not.toContain('several windows');
     const observations = byName.get('tideways_get_observations')?.description ?? '';
     expect(observations).toContain('cannot filter traces by bottleneck');
     expect(observations).toContain('lists recent affected traces');

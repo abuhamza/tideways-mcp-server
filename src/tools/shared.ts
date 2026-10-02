@@ -103,7 +103,7 @@ export function scopeQuery(
   return { env: environment ?? ctx.defaults.environment, s: service ?? ctx.defaults.service };
 }
 
-const sameName = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
+export const sameName = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
 
 /**
  * Tideways answers for the default environment and service when asked for an unknown one.

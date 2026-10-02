@@ -13,12 +13,15 @@ import {
   jsonResult,
   projectParam,
   READ_ONLY_ANNOTATIONS,
+  sameName,
 } from './shared.js';
 import { stripQuery, TRACE_LIMIT, tracesResponse } from './traces.js';
 
 /** One call searches at most this many services. */
 const MAX_SEARCHED_SERVICES = 30;
 const CONCURRENT_SEARCHES = 4;
+/** Requests of the hourly rate limit a search leaves for later calls. */
+const RATE_LIMIT_RESERVE = 10;
 /** Failures every further request would hit too; any other failure affects one service only. */
 const FATAL_ERRORS: ReadonlySet<TidewaysErrorKind> = new Set(['auth', 'forbidden', 'rate_limited']);
 
@@ -29,7 +32,11 @@ const issuesResponse = z.object({
 
 export const listServicesInput = z.strictObject({
   project: projectParam,
-  environment: environmentParam,
+  environment: environmentParam.describe(
+    'Environment, e.g. "production" or "staging". Defaults to the configured environment, else ' +
+      'production; "environment" in the result shows which was used. When results come back, an ' +
+      'unknown name fails with an error.'
+  ),
   search: z
     .string()
     .min(1)
@@ -58,7 +65,7 @@ export const listServicesOutput = z.object({
             'Pass as "service". A ":cli" suffix marks the CLI scripts and workers of the service ' +
               'named before it.'
           ),
-        issues: z.number().describe('How many of the open issues read name this service'),
+        issues: z.number().describe('How many of the open issues this call read name this service'),
         matchingTraces: z
           .number()
           .nullable()
@@ -84,10 +91,10 @@ export const listServicesOutput = z.object({
       })
     )
     .describe(
-      'Services named by the open errors, slow SQL queries and deprecations on the first page of ' +
-        'each list, plus the default service. Sorted default first, then by issues; with ' +
-        '"search", by matchingTraces. Services without open issues are missing; the Tideways UI ' +
-        'service selector lists all.'
+      'Services named by the newest open errors, slow SQL queries and deprecations (first page ' +
+        'of each), plus the default service; other services are missing, and the Tideways UI ' +
+        'service selector lists all. Sorted default first, then by issues; with "search", by ' +
+        'matchingTraces.'
     ),
   search: z
     .object({
@@ -96,8 +103,9 @@ export const listServicesOutput = z.object({
       notSearched: z
         .number()
         .describe(
-          `Services left out because one call searches at most ${MAX_SEARCHED_SERVICES}; search ` +
-            'them with tideways_search_traces'
+          `Services left out because one call searches at most ${MAX_SEARCHED_SERVICES}, or ` +
+            'fewer when the hourly rate limit is nearly used up; search them with ' +
+            'tideways_search_traces'
         ),
     })
     .optional()
@@ -105,9 +113,8 @@ export const listServicesOutput = z.object({
 });
 
 export type ListServicesOutput = z.infer<typeof listServicesOutput>;
-type ServiceSearch = Pick<
-  ListServicesOutput['services'][number],
-  'matchingTraces' | 'example' | 'searchError'
+type ServiceSearch = Required<
+  Pick<ListServicesOutput['services'][number], 'matchingTraces' | 'example' | 'searchError'>
 >;
 
 /**
@@ -143,35 +150,48 @@ async function searchService(
   service: string,
   search: string
 ): Promise<ServiceSearch> {
-  const label = projectLabel(ref);
+  const failed = (searchError: string): ServiceSearch => ({
+    matchingTraces: null,
+    example: null,
+    searchError,
+  });
+  let traces: z.output<typeof tracesResponse>['traces'];
   try {
     const body = await ctx.http.get(apiPath(ref.organization, ref.project, 'traces'), {
       query: { env: environment ?? ctx.defaults.environment, s: service, search },
       scope: 'traces',
-      resource: `traces of ${label} (service ${service})`,
+      resource: `traces of ${projectLabel(ref)} (service ${service})`,
     });
-    const { traces } = parseResponse(tracesResponse, body, 'traces');
-    for (const trace of traces) assertAnsweredScope(ctx, { environment, service }, trace);
-    const [newest] = traces;
-    return {
-      matchingTraces: traces.length,
-      example: newest
-        ? {
-            transaction: newest.transaction_name,
-            url: newest.http?.url ? stripQuery(newest.http.url) : null,
-            date: newest.date,
-          }
-        : null,
-      searchError: null,
-    };
+    ({ traces } = parseResponse(tracesResponse, body, 'traces'));
   } catch (error) {
-    if (error instanceof TidewaysApiError && FATAL_ERRORS.has(error.kind)) throw error;
-    return {
-      matchingTraces: null,
-      example: null,
-      searchError: error instanceof Error ? error.message : String(error),
-    };
+    if (error instanceof TidewaysApiError && !FATAL_ERRORS.has(error.kind)) {
+      return failed(error.message);
+    }
+    throw error;
   }
+  // Every service is searched in the same environment, so a mismatch there fails the call.
+  for (const trace of traces) {
+    assertAnsweredScope(ctx, { environment }, trace, { checkService: false });
+  }
+  const mismatch = traces.find(trace => trace.service && !sameName(trace.service, service));
+  if (mismatch?.service) {
+    return failed(
+      `Tideways does not know service "${service}" in ${mismatch.environment ?? 'this environment'} ` +
+        `and answered for "${mismatch.service}" instead; its traces cannot be searched.`
+    );
+  }
+  const [newest] = traces;
+  return {
+    matchingTraces: traces.length,
+    example: newest
+      ? {
+          transaction: newest.transaction_name,
+          url: newest.http?.url ? stripQuery(newest.http.url) : null,
+          date: newest.date,
+        }
+      : null,
+    searchError: null,
+  };
 }
 
 export function registerListServicesTool(server: McpServer, ctx: ToolContext): void {
@@ -184,8 +204,8 @@ export function registerListServicesTool(server: McpServer, ctx: ToolContext): v
         'default service first. Call it when the user names an app, API, endpoint or worker that ' +
         'is not a project, with "search" set to one word of it: each service is searched for that ' +
         'word and the services are sorted by matching traces, so the first ones serve it. Costs 3 ' +
-        'requests, plus 1 per service with "search". Services without open issues are missing; ' +
-        'the Tideways UI service selector lists all.',
+        'requests, plus 1 per service with "search". Only services named by the newest open ' +
+        'issues are listed; the Tideways UI service selector lists all.',
       inputSchema: listServicesInput,
       outputSchema: listServicesOutput,
       annotations: READ_ONLY_ANNOTATIONS,
@@ -233,7 +253,9 @@ export function registerListServicesTool(server: McpServer, ctx: ToolContext): v
         services,
       };
       if (search !== undefined) {
-        const searched = services.slice(0, MAX_SEARCHED_SERVICES);
+        const remaining = ctx.http.lastRateLimit()?.remaining;
+        const budget = remaining === undefined ? Infinity : remaining - RATE_LIMIT_RESERVE;
+        const searched = services.slice(0, Math.max(0, Math.min(MAX_SEARCHED_SERVICES, budget)));
         const results = await mapLimited(searched, CONCURRENT_SEARCHES, service =>
           searchService(ctx, ref, environment, service.name, search)
         );
