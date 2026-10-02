@@ -97,6 +97,41 @@ export function scopeQuery(
   return { env: environment ?? ctx.defaults.environment, s: service ?? ctx.defaults.service };
 }
 
+const sameName = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
+
+/**
+ * Tideways answers for the default environment and service when asked for an unknown one.
+ * Throws when what it answered for differs from what was asked (argument, else configured
+ * default); a side nobody asked for, or that the response does not name, is not checked.
+ */
+export function assertAnsweredScope(
+  ctx: ToolContext,
+  asked: { environment?: string | undefined; service?: string | undefined },
+  answered: { environment?: string | null | undefined; service?: string | null | undefined },
+  options: { checkService?: boolean } = {}
+): void {
+  const environment = asked.environment ?? ctx.defaults.environment;
+  if (environment && answered.environment && !sameName(environment, answered.environment)) {
+    throw new Error(
+      `Tideways has no environment "${environment}" and answered for "${answered.environment}" ` +
+        'instead; ask the user which environment to use.'
+    );
+  }
+  const service = asked.service ?? ctx.defaults.service;
+  if (
+    options.checkService !== false &&
+    service &&
+    answered.service &&
+    !sameName(service, answered.service)
+  ) {
+    throw new Error(
+      `Tideways has no service "${service}" in ${answered.environment ?? environment ?? 'that environment'} ` +
+        `and answered for the default service "${answered.service}" instead. The "services" of ` +
+        'tideways_list_issues results name the services; ask the user if none fits.'
+    );
+  }
+}
+
 /** Tool result carrying typed structured content plus the same data as compact JSON text. */
 export function jsonResult(structured: Record<string, unknown>) {
   return {

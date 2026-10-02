@@ -15,6 +15,7 @@ import {
   LARGE_RESULT_META,
   projectParam,
   rawOutput,
+  assertAnsweredScope,
   READ_ONLY_ANNOTATIONS,
   round,
   scopeQuery,
@@ -107,6 +108,7 @@ export function registerPerformanceSummaryTool(server: McpServer, ctx: ToolConte
         resource: `the performance summary of ${label}`,
       });
       const { summary } = parseResponse(summaryResponse, body, 'summary');
+      assertAnsweredScope(ctx, { environment, service }, summary.criteria ?? {});
 
       const all: Bucket[] = Object.entries(summary.by_time)
         .sort(byKey)

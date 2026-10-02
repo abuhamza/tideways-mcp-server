@@ -8,6 +8,7 @@ import { projectLabel } from '../tideways/projects.js';
 import { parseApiMinute } from '../tideways/time.js';
 import {
   apiMinuteParam,
+  assertAnsweredScope,
   detailParam,
   environmentParam,
   jsonResult,
@@ -189,6 +190,9 @@ export function registerSearchTracesTool(server: McpServer, ctx: ToolContext): v
         resource: `traces of ${label}`,
       });
       const { traces } = parseResponse(tracesResponse, body, 'traces');
+      for (const t of traces) {
+        assertAnsweredScope(ctx, args, t);
+      }
       const output: SearchTracesOutput = {
         project: label,
         count: traces.length,

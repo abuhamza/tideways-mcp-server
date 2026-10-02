@@ -180,7 +180,9 @@ describe('tideways_get_performance_summary', () => {
 
   it('defaults to 24 hours and passes environment and service', async () => {
     server = await startTestServer({
-      '/acme/shop/summary': { body: summary('2026-09-01 00:00', '2026-09-30 12:30') },
+      '/acme/shop/summary': {
+        body: summary('2026-09-01 00:00', '2026-09-30 12:30', 2, 'staging'),
+      },
     });
     const result = await callTool(server, 'tideways_get_performance_summary', {
       environment: 'staging',

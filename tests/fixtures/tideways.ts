@@ -67,7 +67,7 @@ export const performance = {
 };
 
 /** Summary with 15-minute buckets from `from` to `to` (UTC), trailing `pending` buckets zero-filled. */
-export function summary(from: string, to: string, pending = 2) {
+export function summary(from: string, to: string, pending = 2, environment = 'production') {
   const byTime: Record<string, { requests: number; errors: number; percentile_95p: number }> = {};
   const end = new Date(`${to.replace(' ', 'T')}:00Z`).getTime();
   for (let t = new Date(`${from.replace(' ', 'T')}:00Z`).getTime(); t <= end; t += 900_000) {
@@ -84,7 +84,7 @@ export function summary(from: string, to: string, pending = 2) {
   return {
     summary: {
       by_time: byTime,
-      criteria: { service: 'web', environment: 'production', start: from, end: to },
+      criteria: { service: 'web', environment, start: from, end: to },
     },
   };
 }

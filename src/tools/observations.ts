@@ -6,6 +6,7 @@ import { apiPath } from '../tideways/http.js';
 import { parseResponse, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import {
+  assertAnsweredScope,
   environmentParam,
   jsonResult,
   projectParam,
@@ -83,6 +84,7 @@ export function registerGetObservationsTool(server: McpServer, ctx: ToolContext)
         resource: `observations of ${label}`,
       });
       const parsed = parseResponse(observationsResponse, body, 'observations');
+      assertAnsweredScope(ctx, { environment, service }, parsed.criteria ?? {});
       const output: GetObservationsOutput = {
         project: label,
         criteria: {

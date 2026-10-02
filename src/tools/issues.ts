@@ -6,6 +6,7 @@ import { apiPath } from '../tideways/http.js';
 import { num, parseResponse, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import {
+  assertAnsweredScope,
   detailParam,
   environmentParam,
   jsonResult,
@@ -130,6 +131,7 @@ export function registerListIssuesTool(server: McpServer, ctx: ToolContext): voi
         resource: `issues of ${label}`,
       });
       const parsed = parseResponse(issuesResponse, body, 'issues');
+      assertAnsweredScope(ctx, { environment }, parsed.criteria ?? {}, { checkService: false });
       const output: ListIssuesOutput = {
         project: label,
         criteria: {

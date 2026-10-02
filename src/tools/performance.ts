@@ -15,6 +15,7 @@ import {
   LARGE_RESULT_META,
   projectParam,
   rawOutput,
+  assertAnsweredScope,
   READ_ONLY_ANNOTATIONS,
   scopeQuery,
   serviceParam,
@@ -147,6 +148,7 @@ export function registerPerformanceTool(server: McpServer, ctx: ToolContext): vo
         resource: `performance data of ${label}`,
       });
       const app = parseResponse(performanceResponse, body, 'performance').application;
+      assertAnsweredScope(ctx, { environment, service }, app.criteria ?? {});
       const total = app.total;
       const output: PerformanceOutput = {
         project: label,
