@@ -19,10 +19,10 @@ Before every commit: `npm run typecheck && npm run lint && npm run format:check 
 
 - Times are UTC `YYYY-MM-DD HH:mm`. History day/week/month boundaries follow the organization's local calendar while its `by_time` keys stay UTC.
 - The default service is project-specific, not `web`: send `env`/`s` only when the caller or config sets them.
-- A project can have many services; no endpoint lists them. Issue items carry `services[]`, the only place other services' names show up (`tideways_list_services` reads them). `x:cli` is the CLI context of service `x` and works as `s`.
+- A project can have many services; no endpoint lists them. Issue items carry `services[]`, the only place other services' names show up (`tideways_list_services` reads them). (10-02) `x:cli` is the CLI context of service `x` and works as `s`.
 - Scopes: `metrics` (performance, summary, history), `traces`, `errors` (issues, observations).
 - `/issues` has no "all" type or status (unknown statuses silently become `open`); 10 per page, no total.
-- `/traces` returns at most 30 traces, newest first, without pagination, and has no bottleneck filter (the UI's `bottleneckType` is ignored too). Trace `bottlenecks[]` holds values such as `nplus1`, `sql`, `http`, `cache`; observations name findings (`bottleneck-nplus1`) without the affected transactions. (10-02) `transaction_name` matches nothing (even full names); a single `min_date`/`max_date` is ignored; `sort_order` is ignored and `sort_by=date` is not honored (`response_time`, `memory` work).
+- `/traces` returns at most 30 traces, newest first, without pagination, and has no bottleneck filter ((10-02) the UI's `bottleneckType` is ignored too). Trace `bottlenecks[]` holds values such as `nplus1`, `sql`, `http`, `cache`; observations name findings (`bottleneck-nplus1`) without the affected transactions. (10-02) `transaction_name` matches nothing (even full names); a single `min_date`/`max_date` is ignored; `sort_order` is ignored and `sort_by=date` is not honored (`response_time`, `memory` work).
 - (10-02) `/issues` ignores `s`; its issues appear limited to those seen in the default service.
 - (10-02) History is production and the default service only. Old history reports can hold transactions with a null `name`.
 - (10-02) Unknown `env`/`s` fall back to the defaults; `criteria` shows what was used (the tools throw on a mismatch).
