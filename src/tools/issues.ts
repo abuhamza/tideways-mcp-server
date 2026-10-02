@@ -66,8 +66,8 @@ export const listIssuesInput = z.strictObject({
     .enum(ISSUE_STATUSES)
     .default('open')
     .describe(
-      'open (default) = unresolved; resolved, ignored and not_error are triaged states. ' +
-        'There is no "all"; call once per status you need.'
+      'open (default) = unresolved; resolved, ignored and not_error are triaged states; "new" ' +
+        'currently returns the same list as "open". There is no "all"; call once per status you need.'
     ),
   page: z.number().int().min(1).default(1).describe('Page number; 10 issues per page'),
   detail: detailParam,

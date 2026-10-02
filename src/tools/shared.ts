@@ -13,6 +13,9 @@ export const READ_ONLY_ANNOTATIONS = {
 /** Lets Claude hosts accept large `detail: "full"` results instead of truncating them. */
 export const LARGE_RESULT_META = { 'anthropic/maxResultSizeChars': 300_000 } as const;
 
+/** Name shown for a transaction Tideways reports without one. */
+export const UNNAMED = '(unnamed)';
+
 export const projectParam = z
   .string()
   .min(1)
@@ -30,7 +33,8 @@ export const environmentParam = z
   .optional()
   .describe(
     'Environment, e.g. "production" or "staging". Defaults to the configured environment, else ' +
-      'production; criteria.environment shows which was used. An unknown name fails with an error.'
+      "production; criteria.environment (traces: each trace's environment) shows which was used. " +
+      'When results come back, an unknown name fails with an error.'
   );
 
 export const serviceParam = z
@@ -41,7 +45,8 @@ export const serviceParam = z
   .describe(
     'Service, e.g. "web" or "worker". Defaults to the configured service, else the project\'s ' +
       'default service. A project can have several services; the "services" of ' +
-      'tideways_list_issues results name them. An unknown name fails with an error.'
+      'tideways_list_issues results name them. When results come back, an unknown name fails ' +
+      'with an error.'
   );
 
 export const detailParam = z
@@ -113,10 +118,12 @@ export function assertAnsweredScope(
   options: { checkService?: boolean } = {}
 ): void {
   const environment = asked.environment ?? ctx.defaults.environment;
+  const configured = (name: 'environment' | 'service') =>
+    asked[name] === undefined ? ` (the configured default; pass "${name}" to override)` : '';
   if (environment && answered.environment && !sameName(environment, answered.environment)) {
     throw new Error(
-      `Tideways has no environment "${environment}" and answered for "${answered.environment}" ` +
-        'instead; ask the user which environment to use.'
+      `Tideways has no environment "${environment}"${configured('environment')} and answered for ` +
+        `"${answered.environment}" instead; ask the user which environment to use.`
     );
   }
   const service = asked.service ?? ctx.defaults.service;
@@ -127,8 +134,8 @@ export function assertAnsweredScope(
     !sameName(service, answered.service)
   ) {
     throw new Error(
-      `Tideways has no service "${service}" in ${answered.environment ?? environment ?? 'that environment'} ` +
-        `and answered for the default service "${answered.service}" instead. The "services" of ` +
+      `Tideways has no service "${service}"${configured('service')} in ` +
+        `${answered.environment ?? environment ?? 'that environment'} and answered for the default service "${answered.service}" instead. The "services" of ` +
         'tideways_list_issues results name the services; ask the user if none fits.'
     );
   }

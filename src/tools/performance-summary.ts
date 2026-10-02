@@ -7,6 +7,7 @@ import { num, parseResponse, phpMap, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import { parseApiMinute } from '../tideways/time.js';
 import {
+  assertAnsweredScope,
   byKey,
   criteriaOutput,
   detailParam,
@@ -15,7 +16,6 @@ import {
   LARGE_RESULT_META,
   projectParam,
   rawOutput,
-  assertAnsweredScope,
   READ_ONLY_ANNOTATIONS,
   round,
   scopeQuery,

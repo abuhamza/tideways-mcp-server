@@ -15,10 +15,10 @@ import {
   rawOutput,
   READ_ONLY_ANNOTATIONS,
   round,
+  UNNAMED,
 } from './shared.js';
 
 const TOP_TRANSACTIONS = 20;
-const UNNAMED = '(unnamed)';
 
 const historyResponse = z.object({
   date_range: z.object({ start: text, end: text, granularity: text }).optional(),
@@ -94,7 +94,7 @@ export const getHistoryOutput = z.object({
     )
     .describe(
       'Hourly (UTC) for a day; daily (UTC date, max p95) for a week or month. The first and last ' +
-        "days are partial because the report follows the organization's calendar"
+        "days can be partial because the report follows the organization's calendar"
     ),
   pendingBuckets: z
     .number()

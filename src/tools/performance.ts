@@ -7,6 +7,7 @@ import { num, parseResponse, phpMap, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import {
   apiMinuteParam,
+  assertAnsweredScope,
   byKey,
   criteriaOutput,
   detailParam,
@@ -15,12 +16,12 @@ import {
   LARGE_RESULT_META,
   projectParam,
   rawOutput,
-  assertAnsweredScope,
   READ_ONLY_ANNOTATIONS,
   round,
   scopeQuery,
   serviceParam,
   toCriteria,
+  UNNAMED,
 } from './shared.js';
 
 const criteriaSchema = z.object({
@@ -169,7 +170,7 @@ export function registerPerformanceTool(server: McpServer, ctx: ToolContext): vo
           ),
         },
         transactions: app.by_transactions.map(t => ({
-          name: t.name ?? '(unnamed)',
+          name: t.name ?? UNNAMED,
           requests: t.requests,
           averageMs: t.response_time_average,
           p95Ms: t.response_time_worst,

@@ -65,7 +65,7 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     expect(instructions).toContain('default service');
     expect(instructions).toContain('cannot switch service');
     expect(instructions).toContain('production only');
-    expect(instructions).toContain('An unknown environment or service fails with an error');
+    expect(instructions).toContain('an unknown environment or service fails with an error');
     expect(instructions).toContain('one word of a suspected transaction or URL');
     expect(instructions).toContain('"nplus1"');
     expect(instructions).toContain('yesterday 14:00-16:00');
@@ -133,7 +133,7 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
       'report totals cover only part of the period'
     );
     expect(prop('tideways_get_history', 'outputSchema', 'transactionCount')).toContain('top 20');
-    expect(prop('tideways_get_history', 'outputSchema', 'timeline')).toContain('partial');
+    expect(prop('tideways_get_history', 'outputSchema', 'timeline')).toContain('can be partial');
     expect(nested('tideways_get_history', ['transactions', '[]', 'memoryMax'])).toContain('KB');
 
     const issues = byName.get('tideways_list_issues')?.description ?? '';
@@ -146,6 +146,9 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
       'transactionCount'
     );
     expect(prop('tideways_list_issues', 'inputSchema', 'status')).toContain('triaged');
+    expect(prop('tideways_list_issues', 'inputSchema', 'status')).toContain(
+      '"new" currently returns the same list as "open"'
+    );
 
     expect(byName.get('tideways_get_performance')?.description).toContain('Older windows');
     expect(nested('tideways_get_performance', ['totals', 'downstreamAverageMs'])).toContain(

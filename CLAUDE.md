@@ -15,19 +15,17 @@ Before every commit: `npm run typecheck && npm run lint && npm run format:check 
 - Failures are thrown `Error`s whose message says what failed, why, and what to do next; the SDK turns them into `isError` results the model reads.
 - Test fixtures are synthetic. Real Tideways responses stay out of the repository.
 
-## Tideways API facts (live-verified 2026-09-30)
+## Tideways API facts (live-verified 2026-09-30; entries marked 10-02 on 2026-10-02)
 
 - Times are UTC `YYYY-MM-DD HH:mm`. History day/week/month boundaries follow the organization's local calendar while its `by_time` keys stay UTC.
 - The default service is project-specific, not `web`: send `env`/`s` only when the caller or config sets them.
 - A project can have many services; no endpoint lists them. Issue items carry `services[]`, the only place other services' names show up.
 - Scopes: `metrics` (performance, summary, history), `traces`, `errors` (issues, observations).
 - `/issues` has no "all" type or status (unknown statuses silently become `open`); 10 per page, no total.
-- `/traces` returns at most 30 traces, newest first, without pagination, and has no bottleneck filter. Trace `bottlenecks[]` holds values such as `nplus1`, `sql`, `http`, `cache`; observations name findings (`bottleneck-nplus1`) without the affected transactions.
-- `/traces`: `transaction_name` matches nothing (even full names); a single `min_date`/`max_date` is ignored; `sort_order` is ignored and `sort_by=date` is not honored (`response_time`, `memory` work).
-- `/issues` ignores `s`; its issues are those seen in the default service.
-- History is production and the default service only.
-- Unknown `env`/`s` fall back to the defaults; `criteria` shows what was used (the tools throw on a mismatch).
-- Old history reports can hold transactions with a null `name`.
+- `/traces` returns at most 30 traces, newest first, without pagination, and has no bottleneck filter. Trace `bottlenecks[]` holds values such as `nplus1`, `sql`, `http`, `cache`; observations name findings (`bottleneck-nplus1`) without the affected transactions. (10-02) `transaction_name` matches nothing (even full names); a single `min_date`/`max_date` is ignored; `sort_order` is ignored and `sort_by=date` is not honored (`response_time`, `memory` work).
+- (10-02) `/issues` ignores `s`; its issues appear limited to those seen in the default service.
+- (10-02) History is production and the default service only. Old history reports can hold transactions with a null `name`.
+- (10-02) Unknown `env`/`s` fall back to the defaults; `criteria` shows what was used (the tools throw on a mismatch).
 - `/summary` always returns ~30 days (~218 KB); trailing all-zero buckets mean "not aggregated yet".
 - The rate limit is per token per clock hour, shared by all projects. `X-RateLimit-Reset` is an epoch in seconds. 429 is final until the reset; `/_token`, 401 and 404 responses are not counted.
 - Error bodies come as `{error}`, `{status, msg}` or a bare JSON string (`extractApiMessage` handles all three).

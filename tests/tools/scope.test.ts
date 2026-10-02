@@ -70,7 +70,22 @@ describe('scope checks: Tideways answering for another environment or service', 
     );
     const result = await callTool(server, 'tideways_get_performance');
     expect(result.isError).toBe(true);
-    expect(textOf(result)).toMatch(SERVICE_ERROR);
+    expect(textOf(result)).toContain('no service "voucher-api" (the configured');
+    expect(textOf(result)).toContain('(the configured default; pass "service" to override)');
+  });
+
+  it('says when the environment came from configuration', async () => {
+    server = await startTestServer(
+      { '/acme/shop/performance': { body: withCriteria(performance, 'application', asked) } },
+      { TIDEWAYS_ENV: 'qa' }
+    );
+    const result = await callTool(server, 'tideways_get_performance');
+    expect(textOf(result)).toContain('no environment "qa" (the configured default');
+    expect(textOf(result)).toContain('(the configured default; pass "environment" to override)');
+
+    const explicit = await callTool(server, 'tideways_get_performance', { environment: 'qa' });
+    expect(textOf(explicit)).toMatch(ENVIRONMENT_ERROR);
+    expect(textOf(explicit)).not.toContain('configured default');
   });
 
   it('skips a side nobody asked for', async () => {
@@ -114,7 +129,7 @@ describe('scope checks: Tideways answering for another environment or service', 
   it('tideways_search_traces compares each trace with what was asked', async () => {
     server = await startTestServer({
       '/acme/shop/traces': {
-        body: { traces: [trace(), trace({ id: 'other', service: 'worker' })] },
+        body: { traces: [trace({ service: 'voucher-api' }), trace()] },
       },
     });
     const result = await callTool(server, 'tideways_search_traces', { service: 'voucher-api' });
@@ -132,11 +147,11 @@ describe('scope checks: Tideways answering for another environment or service', 
       service: 'web',
     });
     expect(ok.isError).toBeUndefined();
+  });
 
-    server.api.requests.length = 0;
-    const empty = await startTestServer({ '/acme/shop/traces': { body: { traces: [] } } });
-    const result = await callTool(empty, 'tideways_search_traces', { service: 'voucher-api' });
-    await empty.close();
+  it('tideways_search_traces does not fail on empty results', async () => {
+    server = await startTestServer({ '/acme/shop/traces': { body: { traces: [] } } });
+    const result = await callTool(server, 'tideways_search_traces', { service: 'voucher-api' });
     expect(result.isError).toBeUndefined();
   });
 });

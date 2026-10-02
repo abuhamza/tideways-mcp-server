@@ -25,8 +25,8 @@ export const SERVER_INSTRUCTIONS = [
   'Without "service", tools read the project\'s default service; a project often has more (APIs,',
   'workers, CLI), and the "services" of tideways_list_issues results name them. tideways_list_issues',
   'and tideways_get_history cannot switch service, and tideways_get_history covers production only.',
-  'An unknown environment or service fails with an error naming the default; ask the user when no',
-  'name fits.',
+  'When results come back, an unknown environment or service fails with an error naming the default;',
+  'ask the user when no name fits.',
   'The hourly API rate limit is shared by all projects of the token.',
 ].join(' ');
 
