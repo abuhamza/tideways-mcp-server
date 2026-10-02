@@ -91,8 +91,10 @@ The server reads only its environment; it does not load `.env` files.
 ## Good to know
 
 - All times are UTC, written `YYYY-MM-DD HH:mm`.
+- Without `service`, tools read the project's default service. A project often has several services (web, APIs, workers, CLI); the API cannot list them, but `tideways_list_issues` results name them. If your assistant cannot find an endpoint, tell it which service to look in, or set `TIDEWAYS_SERVICE`.
 - The Tideways API rate limit is per token and per clock hour, shared by all projects. `tideways_list_projects` reports the rate-limit status seen on the most recent counted request of the session (null before the first one); a limit error names the reset time.
 - `tideways_search_traces` returns at most 30 traces per call (an API limit); narrow the time window or sort by response time to find others.
+- Observations such as "N+1 queries" name the problem, not the affected transactions. Example traces carry it in `bottlenecks` (`nplus1`); the observation's link opens the full list in Tideways.
 - Issues have no "all" filter in the API: ask for one type (`error`, `slowsql`, `deprecated`) and one status at a time.
 
 ## Security

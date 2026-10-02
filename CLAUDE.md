@@ -19,9 +19,10 @@ Before every commit: `npm run typecheck && npm run lint && npm run format:check 
 
 - Times are UTC `YYYY-MM-DD HH:mm`. History day/week/month boundaries follow the organization's local calendar while its `by_time` keys stay UTC.
 - The default service is project-specific, not `web`: send `env`/`s` only when the caller or config sets them.
+- A project can have many services; no endpoint lists them. Issue items carry `services[]`, the only place other services' names show up.
 - Scopes: `metrics` (performance, summary, history), `traces`, `errors` (issues, observations).
 - `/issues` has no "all" type or status (unknown statuses silently become `open`); 10 per page, no total.
-- `/traces` returns at most 30 traces, newest first, without pagination.
+- `/traces` returns at most 30 traces, newest first, without pagination, and has no bottleneck filter. `transaction_name` is an exact match on the full name (often longer than the UI shows). Trace `bottlenecks[]` holds values such as `nplus1`, `sql`, `http`, `cache`; observations name findings (`bottleneck-nplus1`) without the affected transactions.
 - `/summary` always returns ~30 days (~218 KB); trailing all-zero buckets mean "not aggregated yet".
 - The rate limit is per token per clock hour, shared by all projects. `X-RateLimit-Reset` is an epoch in seconds. 429 is final until the reset; `/_token`, 401 and 404 responses are not counted.
 - Error bodies come as `{error}`, `{status, msg}` or a bare JSON string (`extractApiMessage` handles all three).

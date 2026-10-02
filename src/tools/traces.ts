@@ -60,7 +60,10 @@ export const searchTracesInput = z.object({
     .min(1)
     .max(500)
     .optional()
-    .describe('Exact transaction name, e.g. "App\\\\Controller\\\\CartController::show"'),
+    .describe(
+      'Exact, full transaction name as traces return it (often longer than the name shown in ' +
+        'the Tideways UI), e.g. "App\\\\Controller\\\\CartController::show". Unsure? Use search first.'
+    ),
   search: z
     .string()
     .min(1)
@@ -102,7 +105,12 @@ export const searchTracesOutput = z.object({
       httpMethod: z.string().nullable(),
       httpStatus: z.number().nullable(),
       url: z.string().nullable().describe('Request URL without query string'),
-      bottlenecks: z.array(z.string()),
+      bottlenecks: z
+        .array(z.string())
+        .describe(
+          'Bottlenecks Tideways detected in this trace, e.g. "nplus1" (N+1 queries or calls, the ' +
+            'trace-level form of the bottleneck-nplus1 observation), "sql", "http"'
+        ),
       topLayers: z
         .array(
           z.object({

@@ -18,7 +18,12 @@ export const SERVER_INSTRUCTIONS = [
   '15-minute trends over up to 30 days -> tideways_get_performance_summary; past day/week/month',
   'reports -> tideways_get_history; errors, slow SQL, deprecations -> tideways_list_issues;',
   'individual slow requests -> tideways_search_traces; configuration and code findings ->',
-  'tideways_get_observations. The hourly API rate limit is shared by all projects of the token.',
+  'tideways_get_observations. N+1 queries, sleeps and waits are observations; to find example',
+  'requests, search traces of the suspected transactions and check their bottlenecks for "nplus1".',
+  'Without a "service" argument, tools read the default service (criteria.service in results); a',
+  'project often has more services (APIs, workers, CLI) and tideways_list_issues results name them.',
+  'When something is not found, try another service or ask the user which one to use.',
+  'The hourly API rate limit is shared by all projects of the token.',
 ].join(' ');
 
 /** Build one MCP server instance. The stdio entry calls this once per connection. */

@@ -59,6 +59,44 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     }
   });
 
+  it('tells the model how to find services, N+1 traces and transaction names', async () => {
+    server = await startTestServer({});
+    const instructions = server.client.getInstructions() ?? '';
+    expect(instructions).toContain('default service');
+    expect(instructions).toContain('N+1');
+
+    const { tools } = await server.client.listTools();
+    const byName = new Map(tools.map(t => [t.name, t]));
+    const describedProperty = (
+      tool: string,
+      schema: 'inputSchema' | 'outputSchema',
+      key: string
+    ) => {
+      const properties = byName.get(tool)?.[schema]?.properties as
+        Record<string, { description?: string }> | undefined;
+      return properties?.[key]?.description ?? '';
+    };
+
+    for (const tool of tools.filter(t => 'service' in (t.inputSchema.properties ?? {}))) {
+      expect(describedProperty(tool.name, 'inputSchema', 'service'), tool.name).toContain(
+        'tideways_list_issues'
+      );
+    }
+    expect(describedProperty('tideways_search_traces', 'inputSchema', 'transaction')).toContain(
+      'search'
+    );
+    const traceItem = (
+      byName.get('tideways_search_traces')?.outputSchema?.properties as Record<
+        string,
+        { items?: { properties?: Record<string, { description?: string }> } }
+      >
+    ).traces?.items?.properties;
+    expect(traceItem?.bottlenecks?.description).toContain('nplus1');
+    expect(byName.get('tideways_get_observations')?.description).toContain(
+      'tideways_search_traces'
+    );
+  });
+
   it('lets hosts accept large results only on tools with a detail parameter', async () => {
     server = await startTestServer({});
     const { tools } = await server.client.listTools();

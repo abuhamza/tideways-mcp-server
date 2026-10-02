@@ -38,7 +38,8 @@ export const serviceParam = z
   .max(100)
   .optional()
   .describe(
-    'Service, e.g. "web" or "worker". Defaults to TIDEWAYS_SERVICE, else the project\'s default service.'
+    'Service, e.g. "web" or "worker". Defaults to TIDEWAYS_SERVICE, else the project\'s default service. ' +
+      'A project can have several services; the "services" of tideways_list_issues results name them.'
   );
 
 export const detailParam = z
