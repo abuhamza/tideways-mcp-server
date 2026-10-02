@@ -45,9 +45,9 @@ export const listServicesInput = z.strictObject({
     .optional()
     .describe(
       'One whole word of the app, API, worker or transaction to find (e.g. "voucher"). Searches ' +
-        'the traces of each service for it (one request per service, at most ' +
-        `${MAX_SEARCHED_SERVICES} services and a tenth of the hourly rate limit) and sorts the ` +
-        'services by matching traces.'
+        'the traces of each service for it (one request per service: at most ' +
+        `${MAX_SEARCHED_SERVICES} services, and no more than a tenth of the hourly rate limit) ` +
+        'and sorts the services by matching traces.'
     ),
 });
 
@@ -105,9 +105,9 @@ export const listServicesOutput = z.object({
       notSearched: z
         .number()
         .describe(
-          `Services left out: one call searches at most ${MAX_SEARCHED_SERVICES} services and a ` +
-            'tenth of the hourly rate limit, and keeps 10 requests in reserve; search them with ' +
-            'tideways_search_traces'
+          `Services left out: one call searches at most ${MAX_SEARCHED_SERVICES} services, no ` +
+            'more than a tenth of the hourly rate limit, and keeps ' +
+            `${RATE_LIMIT_RESERVE} requests in reserve; search them with tideways_search_traces`
         ),
     })
     .optional()
@@ -204,11 +204,12 @@ export function registerListServicesTool(server: McpServer, ctx: ToolContext): v
       description:
         'List the services of a project (web, APIs, workers, CLI) named by its open issues, the ' +
         'default service first. Call it when the user names an app, API or worker that is not a ' +
-        'project, or a transaction the default service does not show, with "search" set to one ' +
-        'word of it: each service is searched for that word and the services are sorted by ' +
-        'matching traces, so the first ones serve it. Costs 3 requests, plus 1 per service ' +
-        'searched (at most 30 and a tenth of the hourly rate limit). Only services named by the ' +
-        'newest open issues are listed; the Tideways UI service selector lists all.',
+        'project, or a transaction that tideways_search_traces does not find in the default ' +
+        'service, with "search" set to one word of it: each service is searched for that word ' +
+        'and the services are sorted by matching traces, so the first ones serve it. Costs 3 ' +
+        `requests, plus 1 per service searched: at most ${MAX_SEARCHED_SERVICES}, and no more ` +
+        'than a tenth of the hourly rate limit. Only services named by the newest open issues ' +
+        'are listed; the Tideways UI service selector lists all.',
       inputSchema: listServicesInput,
       outputSchema: listServicesOutput,
       annotations: READ_ONLY_ANNOTATIONS,

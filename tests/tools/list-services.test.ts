@@ -322,7 +322,7 @@ describe('tideways_list_services', () => {
     server = await startTestServer({
       '/acme/shop/issues': url => ({
         ...pages(url),
-        headers: { 'x-ratelimit-limit': '100', 'x-ratelimit-remaining': '90' },
+        headers: { 'x-ratelimit-limit': '109', 'x-ratelimit-remaining': '99' },
       }),
       '/acme/shop/traces': { body: { traces: [] } },
     });
@@ -330,6 +330,31 @@ describe('tideways_list_services', () => {
       .structuredContent as ListServicesOutput;
     expect(traceQueries(server)).toHaveLength(10);
     expect(data.search).toEqual({ word: 'voucher', searched: 10, notSearched: 2 });
+  });
+
+  it('searches no service when 10 or fewer requests of the hourly rate limit remain', async () => {
+    const pages = issuesByType({ error: issuesNaming([['a'], ['b'], ['c'], ['d']]) });
+    server = await startTestServer({
+      '/acme/shop/issues': url => ({ ...pages(url), headers: { 'x-ratelimit-remaining': '8' } }),
+      '/acme/shop/traces': { body: { traces: [] } },
+    });
+    const data = (await callTool(server, 'tideways_list_services', { search: 'voucher' }))
+      .structuredContent as ListServicesOutput;
+    expect(traceQueries(server)).toHaveLength(0);
+    expect(data.search).toEqual({ word: 'voucher', searched: 0, notSearched: 5 });
+  });
+
+  it('searches up to 30 services when Tideways sends no rate-limit headers', async () => {
+    const names = Array.from({ length: 31 }, (_, i) => [`svc-${String(i + 1).padStart(2, '0')}`]);
+    const pages = issuesByType({ error: issuesNaming(names) });
+    server = await startTestServer({
+      '/acme/shop/issues': url => ({ ...pages(url), headers: { 'x-ratelimit-reset': 'n/a' } }),
+      '/acme/shop/traces': { body: { traces: [] } },
+    });
+    const data = (await callTool(server, 'tideways_list_services', { search: 'voucher' }))
+      .structuredContent as ListServicesOutput;
+    expect(traceQueries(server)).toHaveLength(30);
+    expect(data.search).toEqual({ word: 'voucher', searched: 30, notSearched: 2 });
   });
 
   it('searches at most 30 services, the default and the most mentioned first', async () => {
