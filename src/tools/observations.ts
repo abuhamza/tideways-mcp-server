@@ -68,10 +68,10 @@ export function registerGetObservationsTool(server: McpServer, ctx: ToolContext)
       description:
         'Automatic findings Tideways made for a project: PHP configuration problems (e.g. OPcache ' +
         'buffers, timeouts) and code bottlenecks detected in traces (e.g. N+1 queries, sleep, waits). ' +
-        'Use for a quick health check or optimization ideas. The API names each finding but not the ' +
-        'affected transactions: for examples, call tideways_search_traces with one word of a suspected ' +
-        'transaction or URL over several time windows and look for the matching bottleneck (e.g. ' +
-        '"nplus1"), or follow the link to the Tideways UI.',
+        'Use for a quick health check or optimization ideas. Findings do not name the affected ' +
+        'requests, and the API cannot filter traces by bottleneck: give the user the link, whose ' +
+        'page in the Tideways UI lists recent affected traces. Do not infer N+1 queries from ' +
+        'slow-SQL issues.',
       inputSchema: getObservationsInput,
       outputSchema: getObservationsOutput,
       annotations: READ_ONLY_ANNOTATIONS,

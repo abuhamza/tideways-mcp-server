@@ -72,7 +72,7 @@ Environment variables; empty values count as unset. The server does not load `.e
 - `tideways_get_history` covers production and the default service only. For another environment or service, ask `tideways_get_performance` for a window ending at a past `end`.
 - `tideways_list_issues` takes one type (`error`, `slowsql`, `deprecated`) and one status at a time, 10 issues per page.
 - Tools read the project's default service unless you name one. A project can have several (web, APIs, workers, CLI); issue results name them. When results come back, an unknown environment or service fails with an error.
-- Observations such as N+1 queries name the problem, not the transactions. Example traces carry `nplus1` in `bottlenecks`.
+- Observations such as N+1 queries do not name the affected requests, and the API cannot filter traces by bottleneck. The observation's link opens a Tideways page that lists recent affected traces.
 
 ## Security
 

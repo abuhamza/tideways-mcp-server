@@ -59,15 +59,16 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     }
   });
 
-  it('tells the model how to find services, N+1 traces and past windows', async () => {
+  it('tells the model how to find services, N+1 examples and past windows', async () => {
     server = await startTestServer({});
     const instructions = server.client.getInstructions() ?? '';
     expect(instructions).toContain('default service');
     expect(instructions).toContain('cannot switch service');
     expect(instructions).toContain('production only');
     expect(instructions).toContain('an unknown environment or service fails with an error');
-    expect(instructions).toContain('one word of a suspected transaction or URL');
-    expect(instructions).toContain('"nplus1"');
+    expect(instructions).toContain('cannot filter traces by bottleneck');
+    expect(instructions).toContain('do not infer N+1 queries from slow-SQL issues');
+    expect(instructions).not.toContain('several time windows');
     expect(instructions).toContain('yesterday 14:00-16:00');
     expect(instructions).not.toContain('When something is not found');
 
@@ -103,10 +104,10 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     ).traces?.items?.properties;
     expect(traceItem?.bottlenecks?.description).toContain('nplus1');
     expect(traceItem?.bottlenecks?.description).toContain('no filter');
-    expect(byName.get('tideways_get_observations')?.description).toContain(
-      'tideways_search_traces'
-    );
-    expect(byName.get('tideways_get_observations')?.description).toContain('several time windows');
+    const observations = byName.get('tideways_get_observations')?.description ?? '';
+    expect(observations).toContain('cannot filter traces by bottleneck');
+    expect(observations).toContain('lists recent affected traces');
+    expect(observations).not.toContain('several time windows');
   });
 
   it('explains scope limits, partial periods and units in the tool metadata', async () => {
