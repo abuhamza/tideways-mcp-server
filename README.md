@@ -11,6 +11,7 @@ A read-only [Model Context Protocol](https://modelcontextprotocol.io) server for
 | Tool | Answers |
 |---|---|
 | `tideways_list_projects` | Which projects, scopes and rate-limit budget does my token have? |
+| `tideways_list_services` | Which services does a project have, and which of them serve "voucher"? |
 | `tideways_get_performance` | How is the app doing in any window of up to 24 h within the last ~30 days? Totals, layers, top transactions |
 | `tideways_get_performance_summary` | Requests, errors and p95 in 15-minute buckets over up to 30 days |
 | `tideways_list_issues` | Which errors, slow SQL queries or deprecations are open, resolved or ignored? |
@@ -71,7 +72,7 @@ Environment variables; empty values count as unset. The server does not load `.e
 - `search` in `tideways_search_traces` takes one word of a transaction name or URL; several words widen the result. Pass `from` and `to` together.
 - `tideways_get_history` covers production and the default service only. For another environment or service, ask `tideways_get_performance` for a window ending at a past `end`.
 - `tideways_list_issues` takes one type (`error`, `slowsql`, `deprecated`) and one status at a time, 10 issues per page.
-- Tools read the project's default service unless you name one. A project can have several (web, APIs, workers, CLI); issue results name them. When results come back, an unknown environment or service fails with an error.
+- Tools read the project's default service unless you name one. A project can have several (web, APIs, workers, CLI). The API cannot list them: `tideways_list_services` lists those named by open issues, and with `search` it searches each one's traces for a word, which finds the services behind an app or endpoint. When results come back, an unknown environment or service fails with an error.
 - Observations such as N+1 queries do not name the affected requests, and the API cannot filter traces by bottleneck. The observation's link opens a Tideways page that lists recent affected traces.
 
 ## Security

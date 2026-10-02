@@ -44,9 +44,8 @@ export const serviceParam = z
   .optional()
   .describe(
     'Service, e.g. "web" or "worker". Defaults to the configured service, else the project\'s ' +
-      'default service. A project can have several services; the "services" of ' +
-      'tideways_list_issues results name them. When results come back, an unknown name fails ' +
-      'with an error.'
+      'default service. A project can have several services; tideways_list_services lists ' +
+      'them. When results come back, an unknown name fails with an error.'
   );
 
 export const detailParam = z
@@ -135,8 +134,8 @@ export function assertAnsweredScope(
   ) {
     throw new Error(
       `Tideways has no service "${service}"${configured('service')} in ` +
-        `${answered.environment ?? environment ?? 'that environment'} and answered for the default service "${answered.service}" instead. The "services" of ` +
-        'tideways_list_issues results name the services; ask the user if none fits.'
+        `${answered.environment ?? environment ?? 'that environment'} and answered for the default service "${answered.service}" instead. ` +
+        'tideways_list_services lists the services; ask the user if none fits.'
     );
   }
 }

@@ -53,6 +53,10 @@
       "description": "Projects, scopes and rate-limit status of the API token"
     },
     {
+      "name": "tideways_list_services",
+      "description": "Services seen in open issues; with a search word, the services that serve it"
+    },
+    {
       "name": "tideways_get_performance",
       "description": "Per-minute performance and top transactions for any window of up to 24 h within the last ~30 days"
     },

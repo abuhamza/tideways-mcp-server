@@ -5,6 +5,7 @@ import type { ToolContext } from './context.js';
 import { registerGetHistoryTool } from './tools/history.js';
 import { registerListIssuesTool } from './tools/issues.js';
 import { registerListProjectsTool } from './tools/list-projects.js';
+import { registerListServicesTool } from './tools/list-services.js';
 import { registerGetObservationsTool } from './tools/observations.js';
 import { registerPerformanceSummaryTool } from './tools/performance-summary.js';
 import { registerPerformanceTool } from './tools/performance.js';
@@ -19,10 +20,11 @@ export const SERVER_INSTRUCTIONS = [
   '24 h (e.g. yesterday 14:00-16:00) -> tideways_get_performance with "end"; past day/week/month',
   'reports -> tideways_get_history; errors, slow SQL, deprecations -> tideways_list_issues;',
   'individual slow requests -> tideways_search_traces; configuration and code findings ->',
-  'tideways_get_observations.',
+  'tideways_get_observations; an app, API, endpoint or worker that is not a project ->',
+  'tideways_list_services with "search" set to one word of it.',
   'Without "service", tools read the project\'s default service; a project often has more (APIs,',
-  'workers, CLI), and the "services" of tideways_list_issues results name them. tideways_list_issues',
-  'and tideways_get_history cannot switch service, and tideways_get_history covers production only.',
+  'workers, CLI), which tideways_list_services lists. tideways_list_issues and',
+  'tideways_get_history cannot switch service, and tideways_get_history covers production only.',
   'When results come back, an unknown environment or service fails with an error naming the default;',
   'ask the user when no name fits.',
   'Bottleneck observations (N+1 queries, sleeps, waits) do not name the affected requests, and the',
@@ -39,6 +41,7 @@ export function createServer(ctx: ToolContext): McpServer {
     { capabilities: { tools: { listChanged: false } }, instructions: SERVER_INSTRUCTIONS }
   );
   registerListProjectsTool(server, ctx);
+  registerListServicesTool(server, ctx);
   registerPerformanceTool(server, ctx);
   registerPerformanceSummaryTool(server, ctx);
   registerListIssuesTool(server, ctx);

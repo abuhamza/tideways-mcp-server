@@ -25,7 +25,7 @@ import {
 export const TRACE_LIMIT = 30;
 const TOP_LAYERS = 3;
 
-const tracesResponse = z.object({
+export const tracesResponse = z.object({
   traces: z
     .array(
       z.object({

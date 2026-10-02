@@ -11,7 +11,8 @@ export interface FakeReply {
   bodyThrows?: Error;
 }
 
-export type FakeRoute = FakeReply | ((url: URL, callNumber: number) => FakeReply);
+export type FakeRoute =
+  FakeReply | ((url: URL, callNumber: number) => FakeReply | Promise<FakeReply>);
 
 export interface RecordedRequest {
   url: URL;
@@ -38,7 +39,7 @@ export function createFakeApi(routes: Record<string, FakeRoute>): FakeApi {
   const requests: RecordedRequest[] = [];
   const calls = new Map<string, number>();
 
-  const fetch = (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+  const fetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = new URL(
       typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
     );
@@ -52,9 +53,9 @@ export function createFakeApi(routes: Record<string, FakeRoute>): FakeApi {
       route === undefined
         ? { status: 404, body: { status: 404, msg: 'Not Found' } }
         : typeof route === 'function'
-          ? route(url, callNumber)
+          ? await route(url, callNumber)
           : route;
-    if (reply.throws) return Promise.reject(reply.throws);
+    if (reply.throws) throw reply.throws;
 
     const status = reply.status ?? 200;
     const counted = status !== 401 && status !== 404 && path !== '/_token';
@@ -73,19 +74,17 @@ export function createFakeApi(routes: Record<string, FakeRoute>): FakeApi {
       const error = reply.bodyThrows;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-member-access
       (response as any).text = () => Promise.reject(error);
-      return Promise.resolve(response);
+      return response;
     }
 
-    return Promise.resolve(
-      new Response(bodyText, {
-        status,
-        headers: {
-          'content-type': 'application/json',
-          ...(counted ? RATE_HEADERS : {}),
-          ...reply.headers,
-        },
-      })
-    );
+    return new Response(bodyText, {
+      status,
+      headers: {
+        'content-type': 'application/json',
+        ...(counted ? RATE_HEADERS : {}),
+        ...reply.headers,
+      },
+    });
   };
 
   return { fetch, requests };

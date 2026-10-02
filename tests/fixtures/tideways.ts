@@ -145,6 +145,14 @@ export function issues(count: number, criteria: Record<string, unknown> = {}) {
   };
 }
 
+/** Issues page whose items name the given services, one array per issue. */
+export function issuesNaming(services: string[][], criteria: Record<string, unknown> = {}) {
+  return {
+    issues: services.map((names, i) => issue({ id: `issue-${i + 1}`, services: names })),
+    criteria: { ...issues(0).criteria, ...criteria },
+  };
+}
+
 export function trace(overrides: Record<string, unknown> = {}) {
   return {
     id: 'AbCdEfGhIjKlMnOpQrSt',
