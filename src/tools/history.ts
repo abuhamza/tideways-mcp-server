@@ -67,7 +67,12 @@ export const getHistoryOutput = z.object({
     errorRatePercent: z.number(),
     p95Ms: z.number(),
   }),
-  transactionCount: z.number(),
+  transactionCount: z
+    .number()
+    .describe(
+      `Transactions in the full report; only the top ${TOP_TRANSACTIONS} by impact are listed, ` +
+        'detail "full" has all under raw.transaction_report'
+    ),
   transactions: z
     .array(
       z.object({
@@ -75,7 +80,10 @@ export const getHistoryOutput = z.object({
         totalRequests: z.number(),
         p95Ms: z.number(),
         averageMs: z.number().nullable(),
-        memoryMax: z.number().nullable(),
+        memoryMax: z
+          .number()
+          .nullable()
+          .describe("Peak memory in KB (same scale as traces' memoryKb)"),
         impactPercent: z.number(),
       })
     )
@@ -84,10 +92,16 @@ export const getHistoryOutput = z.object({
     .array(
       z.object({ time: z.string(), requests: z.number(), errors: z.number(), p95Ms: z.number() })
     )
-    .describe('Hourly (UTC) for a day; daily (UTC date, max p95) for a week or month'),
+    .describe(
+      'Hourly (UTC) for a day; daily (UTC date, max p95) for a week or month. The first and last ' +
+        "days are partial because the report follows the organization's calendar"
+    ),
   pendingBuckets: z
     .number()
-    .describe('Trailing hours not aggregated yet (zero-filled by the API), left out'),
+    .describe(
+      'Hours of the period not aggregated yet (zero-filled by the API, left out); when > 0, ' +
+        'report totals cover only part of the period'
+    ),
   raw: rawOutput,
 });
 
@@ -121,7 +135,11 @@ export function registerGetHistoryTool(server: McpServer, ctx: ToolContext): voi
       description:
         'Daily, weekly or monthly performance report for a past date: total requests, error rate, p95, ' +
         `top ${TOP_TRANSACTIONS} transactions by impact and a timeline. Use to compare days or weeks. ` +
-        "Today's report is only complete after the day ends.",
+        'A period that has not ended covers only its finished hours (pendingBuckets > 0), and today ' +
+        'has no data until it ends; compare such periods per day or use ' +
+        "tideways_get_performance_summary. Covers production and the project's default service only; " +
+        'for another environment or service use tideways_get_performance with end and minutes=1440 ' +
+        '(one day per call).',
       inputSchema: getHistoryInput,
       outputSchema: getHistoryOutput,
       annotations: READ_ONLY_ANNOTATIONS,

@@ -92,7 +92,10 @@ export const performanceOutput = z.object({
     medianMs: z.number(),
     downstreamAverageMs: z
       .record(z.string(), z.number())
-      .describe('Average time per request spent in each layer (sql, http, cache, io, ...)'),
+      .describe(
+        'Average ms per request in each layer: sql, http, cache, al = autoloading, ct = compiling, ' +
+          'io = file I/O, dns, runq = waiting for CPU, sleep, shell'
+      ),
   }),
   transactions: z
     .array(
@@ -105,7 +108,7 @@ export const performanceOutput = z.object({
         memory: z
           .number()
           .nullable()
-          .describe('Memory as reported by Tideways (unit undocumented)'),
+          .describe("Peak memory in KB (same scale as traces' memoryKb)"),
         impactPercent: z.number().nullable(),
       })
     )
@@ -131,10 +134,11 @@ export function registerPerformanceTool(server: McpServer, ctx: ToolContext): vo
     {
       title: 'Get performance metrics',
       description:
-        'Per-minute performance of a project over the last 1-1440 minutes: totals (requests, error ' +
-        'rate, p95/median/average response time, time per layer), the top 20 transactions by impact, ' +
-        'and a timeline. Use for "how is the app doing right now / in the last hours". For 15-minute ' +
-        'trends over 30 days use tideways_get_performance_summary; for past days use tideways_get_history.',
+        'Performance of any window of 1-1440 minutes ending at "end" (default now) within the last ' +
+        '~30 days: totals (requests, error rate, p95/median/average response time, time per layer), ' +
+        'the top 20 transactions by impact, and a timeline. Older windows return zeros; use ' +
+        'tideways_get_history for them. For 15-minute trends over 30 days use ' +
+        'tideways_get_performance_summary.',
       inputSchema: performanceInput,
       outputSchema: performanceOutput,
       annotations: READ_ONLY_ANNOTATIONS,

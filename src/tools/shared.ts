@@ -19,8 +19,8 @@ export const projectParam = z
   .max(200)
   .optional()
   .describe(
-    'Tideways project as "project" or "organization/project". Defaults to TIDEWAYS_PROJECT. ' +
-      'Call tideways_list_projects for valid names.'
+    'Tideways project as "project" or "organization/project". Defaults to the defaultProject ' +
+      'that tideways_list_projects reports; call it for valid names.'
   );
 
 export const environmentParam = z
@@ -29,7 +29,8 @@ export const environmentParam = z
   .max(100)
   .optional()
   .describe(
-    'Environment, e.g. "production" or "staging". Defaults to TIDEWAYS_ENV, else the API default (production).'
+    'Environment, e.g. "production" or "staging". Defaults to the configured environment, else ' +
+      'production; criteria.environment shows which was used. An unknown name fails with an error.'
   );
 
 export const serviceParam = z
@@ -38,8 +39,9 @@ export const serviceParam = z
   .max(100)
   .optional()
   .describe(
-    'Service, e.g. "web" or "worker". Defaults to TIDEWAYS_SERVICE, else the project\'s default service. ' +
-      'A project can have several services; the "services" of tideways_list_issues results name them.'
+    'Service, e.g. "web" or "worker". Defaults to the configured service, else the project\'s ' +
+      'default service. A project can have several services; the "services" of ' +
+      'tideways_list_issues results name them. An unknown name fails with an error.'
   );
 
 export const detailParam = z

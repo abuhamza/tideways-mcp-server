@@ -31,7 +31,8 @@ export const listProjectsOutput = z.object({
     .object({ limit: z.number(), remaining: z.number(), resetAt: z.string() })
     .nullable()
     .describe(
-      'Rate-limit headers from the last counted request in this session (null before one). ' +
+      'Rate-limit headers from the last counted request (null until another tool has made a ' +
+        'request in this session; any data call, e.g. tideways_get_observations, fills it). ' +
         'The hourly limit is shared by all projects of the token.'
     ),
 });

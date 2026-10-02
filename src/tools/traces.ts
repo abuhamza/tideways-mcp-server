@@ -61,7 +61,10 @@ export const searchTracesInput = z.strictObject({
     .min(1)
     .max(200)
     .optional()
-    .describe('Word search over transaction name, host and URL tokens (not full-text)'),
+    .describe(
+      'One whole word from the transaction name or URL path (e.g. "checkout"), matched against ' +
+        'transaction, host and URL tokens. Several words match any of them and widen the result.'
+    ),
   from: apiMinuteParam
     .optional()
     .describe('Earliest trace time, "YYYY-MM-DD HH:mm" UTC; needs "to" as well'),
@@ -109,8 +112,9 @@ export const searchTracesOutput = z.object({
       bottlenecks: z
         .array(z.string())
         .describe(
-          'Bottlenecks Tideways detected in this trace, e.g. "nplus1" (N+1 queries or calls, the ' +
-            'trace-level form of the bottleneck-nplus1 observation), "sql", "http"'
+          'Bottlenecks Tideways detected in this trace, e.g. "nplus1" (N+1 queries or calls; the ' +
+            'observation bottleneck-nplus1), "wait", "sql", "http". There is no filter for them; ' +
+            'scan several windows.'
         ),
       topLayers: z
         .array(

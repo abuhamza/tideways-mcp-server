@@ -59,11 +59,17 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     }
   });
 
-  it('tells the model how to find services, N+1 traces and transaction names', async () => {
+  it('tells the model how to find services, N+1 traces and past windows', async () => {
     server = await startTestServer({});
     const instructions = server.client.getInstructions() ?? '';
     expect(instructions).toContain('default service');
-    expect(instructions).toContain('N+1');
+    expect(instructions).toContain('cannot switch service');
+    expect(instructions).toContain('production only');
+    expect(instructions).toContain('An unknown environment or service fails with an error');
+    expect(instructions).toContain('one word of a suspected transaction or URL');
+    expect(instructions).toContain('"nplus1"');
+    expect(instructions).toContain('yesterday 14:00-16:00');
+    expect(instructions).not.toContain('When something is not found');
 
     const { tools } = await server.client.listTools();
     const byName = new Map(tools.map(t => [t.name, t]));
@@ -82,6 +88,13 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
         'tideways_list_issues'
       );
     }
+    const search = describedProperty('tideways_search_traces', 'inputSchema', 'search');
+    expect(search).toContain('One whole word');
+    expect(search).toContain('widen');
+    expect(describedProperty('tideways_search_traces', 'inputSchema', 'from')).toContain(
+      'needs "to"'
+    );
+    expect(byName.get('tideways_search_traces')?.description).not.toContain('transaction,');
     const traceItem = (
       byName.get('tideways_search_traces')?.outputSchema?.properties as Record<
         string,
@@ -89,8 +102,62 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
       >
     ).traces?.items?.properties;
     expect(traceItem?.bottlenecks?.description).toContain('nplus1');
+    expect(traceItem?.bottlenecks?.description).toContain('no filter');
     expect(byName.get('tideways_get_observations')?.description).toContain(
       'tideways_search_traces'
+    );
+    expect(byName.get('tideways_get_observations')?.description).toContain('several time windows');
+  });
+
+  it('explains scope limits, partial periods and units in the tool metadata', async () => {
+    server = await startTestServer({});
+    const { tools } = await server.client.listTools();
+    const byName = new Map(tools.map(t => [t.name, t]));
+    type Props = Record<string, { description?: string }>;
+    const prop = (tool: string, schema: 'inputSchema' | 'outputSchema', key: string): string =>
+      (byName.get(tool)?.[schema]?.properties as Props | undefined)?.[key]?.description ?? '';
+    const nested = (tool: string, path: string[]): string => {
+      let node: unknown = byName.get(tool)?.outputSchema;
+      for (const key of path) {
+        const n = node as { properties?: Record<string, unknown>; items?: unknown };
+        node = key === '[]' ? n.items : n.properties?.[key];
+      }
+      return (node as { description?: string }).description ?? '';
+    };
+
+    const history = byName.get('tideways_get_history')?.description ?? '';
+    expect(history).toContain("production and the project's default service only");
+    expect(history).toContain('tideways_get_performance with end and minutes=1440');
+    expect(history).toContain('pendingBuckets > 0');
+    expect(prop('tideways_get_history', 'outputSchema', 'pendingBuckets')).toContain(
+      'report totals cover only part of the period'
+    );
+    expect(prop('tideways_get_history', 'outputSchema', 'transactionCount')).toContain('top 20');
+    expect(prop('tideways_get_history', 'outputSchema', 'timeline')).toContain('partial');
+    expect(nested('tideways_get_history', ['transactions', '[]', 'memoryMax'])).toContain('KB');
+
+    const issues = byName.get('tideways_list_issues')?.description ?? '';
+    expect(issues).toContain('default service');
+    expect(issues).toContain('There is no time filter');
+    expect(nested('tideways_list_issues', ['issues', '[]', 'occurrences'])).toContain(
+      'not limited to any period'
+    );
+    expect(nested('tideways_list_issues', ['issues', '[]', 'transactions'])).toContain(
+      'transactionCount'
+    );
+    expect(prop('tideways_list_issues', 'inputSchema', 'status')).toContain('triaged');
+
+    expect(byName.get('tideways_get_performance')?.description).toContain('Older windows');
+    expect(nested('tideways_get_performance', ['totals', 'downstreamAverageMs'])).toContain(
+      'autoloading'
+    );
+    expect(nested('tideways_get_performance', ['transactions', '[]', 'memory'])).toContain('KB');
+    expect(prop('tideways_list_projects', 'outputSchema', 'rateLimit')).toContain(
+      'null until another tool'
+    );
+    expect(prop('tideways_get_performance', 'inputSchema', 'project')).toContain('defaultProject');
+    expect(prop('tideways_get_performance', 'inputSchema', 'environment')).toContain(
+      'criteria.environment'
     );
   });
 
