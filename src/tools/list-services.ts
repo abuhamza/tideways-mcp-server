@@ -20,7 +20,8 @@ import { stripQuery, TRACE_LIMIT, tracesResponse } from './traces.js';
 /** One call searches at most this many services. */
 const MAX_SEARCHED_SERVICES = 30;
 const CONCURRENT_SEARCHES = 4;
-/** Requests of the hourly rate limit a search leaves for later calls. */
+/** Share of the hourly rate limit one search may spend, and requests it leaves for later calls. */
+const RATE_LIMIT_SHARE = 0.1;
 const RATE_LIMIT_RESERVE = 10;
 /** Failures every further request would hit too; any other failure affects one service only. */
 const FATAL_ERRORS: ReadonlySet<TidewaysErrorKind> = new Set(['auth', 'forbidden', 'rate_limited']);
@@ -43,9 +44,10 @@ export const listServicesInput = z.strictObject({
     .max(200)
     .optional()
     .describe(
-      'One whole word of the app, API or endpoint the user named (e.g. "voucher"). Searches the ' +
-        `traces of each service for it (one request per service, at most ${MAX_SEARCHED_SERVICES} ` +
-        'services) and sorts the services by matching traces.'
+      'One whole word of the app, API, worker or transaction to find (e.g. "voucher"). Searches ' +
+        'the traces of each service for it (one request per service, at most ' +
+        `${MAX_SEARCHED_SERVICES} services and a tenth of the hourly rate limit) and sorts the ` +
+        'services by matching traces.'
     ),
 });
 
@@ -103,8 +105,8 @@ export const listServicesOutput = z.object({
       notSearched: z
         .number()
         .describe(
-          `Services left out because one call searches at most ${MAX_SEARCHED_SERVICES}, or ` +
-            'fewer when the hourly rate limit is nearly used up; search them with ' +
+          `Services left out: one call searches at most ${MAX_SEARCHED_SERVICES} services and a ` +
+            'tenth of the hourly rate limit, and keeps 10 requests in reserve; search them with ' +
             'tideways_search_traces'
         ),
     })
@@ -201,11 +203,12 @@ export function registerListServicesTool(server: McpServer, ctx: ToolContext): v
       title: 'List services',
       description:
         'List the services of a project (web, APIs, workers, CLI) named by its open issues, the ' +
-        'default service first. Call it when the user names an app, API, endpoint or worker that ' +
-        'is not a project, with "search" set to one word of it: each service is searched for that ' +
-        'word and the services are sorted by matching traces, so the first ones serve it. Costs 3 ' +
-        'requests, plus 1 per service with "search". Only services named by the newest open ' +
-        'issues are listed; the Tideways UI service selector lists all.',
+        'default service first. Call it when the user names an app, API or worker that is not a ' +
+        'project, or a transaction the default service does not show, with "search" set to one ' +
+        'word of it: each service is searched for that word and the services are sorted by ' +
+        'matching traces, so the first ones serve it. Costs 3 requests, plus 1 per service ' +
+        'searched (at most 30 and a tenth of the hourly rate limit). Only services named by the ' +
+        'newest open issues are listed; the Tideways UI service selector lists all.',
       inputSchema: listServicesInput,
       outputSchema: listServicesOutput,
       annotations: READ_ONLY_ANNOTATIONS,
@@ -253,8 +256,13 @@ export function registerListServicesTool(server: McpServer, ctx: ToolContext): v
         services,
       };
       if (search !== undefined) {
-        const remaining = ctx.http.lastRateLimit()?.remaining;
-        const budget = remaining === undefined ? Infinity : remaining - RATE_LIMIT_RESERVE;
+        const rateLimit = ctx.http.lastRateLimit();
+        const budget = rateLimit
+          ? Math.min(
+              Math.floor(rateLimit.limit * RATE_LIMIT_SHARE),
+              rateLimit.remaining - RATE_LIMIT_RESERVE
+            )
+          : Infinity;
         const searched = services.slice(0, Math.max(0, Math.min(MAX_SEARCHED_SERVICES, budget)));
         const results = await mapLimited(searched, CONCURRENT_SEARCHES, service =>
           searchService(ctx, ref, environment, service.name, search)
