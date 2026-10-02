@@ -39,6 +39,7 @@ export function parseResponse<T extends z.ZodType>(
   throw new TidewaysApiError(
     'invalid_response',
     `Tideways returned an unexpected response shape for ${endpoint} (${issues}). ` +
-      'Please report this at https://github.com/abuhamza/tideways-mcp-server/issues.'
+      'This tool cannot read that response; try another date or tool, and report it at ' +
+      'https://github.com/abuhamza/tideways-mcp-server/issues.'
   );
 }

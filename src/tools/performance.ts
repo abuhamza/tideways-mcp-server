@@ -17,6 +17,7 @@ import {
   rawOutput,
   assertAnsweredScope,
   READ_ONLY_ANNOTATIONS,
+  round,
   scopeQuery,
   serviceParam,
   toCriteria,
@@ -37,7 +38,7 @@ const performanceResponse = z.object({
     by_transactions: z
       .array(
         z.object({
-          name: z.string(),
+          name: text,
           requests: num,
           response_time_average: num,
           response_time_worst: num,
@@ -155,7 +156,7 @@ export function registerPerformanceTool(server: McpServer, ctx: ToolContext): vo
         criteria: toCriteria(app.criteria),
         totals: {
           requests: total?.requests ?? 0,
-          errorRatePercent: total?.error_rate ?? 0,
+          errorRatePercent: round(total?.error_rate ?? 0, 4),
           p95Ms: total?.response_time ?? 0,
           averageMs: total?.average ?? 0,
           medianMs: total?.median ?? 0,
@@ -164,13 +165,13 @@ export function registerPerformanceTool(server: McpServer, ctx: ToolContext): vo
           ),
         },
         transactions: app.by_transactions.map(t => ({
-          name: t.name,
+          name: t.name ?? '(unnamed)',
           requests: t.requests,
           averageMs: t.response_time_average,
           p95Ms: t.response_time_worst,
           maxMs: t.response_time_slowest,
-          memory: t.memory ?? null,
-          impactPercent: t.impact ?? null,
+          memory: t.memory === null || t.memory === undefined ? null : Math.round(t.memory),
+          impactPercent: t.impact === null || t.impact === undefined ? null : round(t.impact, 4),
         })),
         timeline: Object.entries(app.by_time)
           .sort(byKey)

@@ -14,9 +14,11 @@ import {
   projectParam,
   rawOutput,
   READ_ONLY_ANNOTATIONS,
+  round,
 } from './shared.js';
 
 const TOP_TRANSACTIONS = 20;
+const UNNAMED = '(unnamed)';
 
 const historyResponse = z.object({
   date_range: z.object({ start: text, end: text, granularity: text }).optional(),
@@ -31,7 +33,7 @@ const historyResponse = z.object({
   transaction_report: z
     .array(
       z.object({
-        name: z.string(),
+        name: text,
         response_time_p95: num,
         response_time_average: z.number().nullish(),
         total_requests: num,
@@ -165,7 +167,7 @@ export function registerGetHistoryTool(server: McpServer, ctx: ToolContext): voi
         },
         report: {
           totalRequests: parsed.report?.total_requests ?? 0,
-          errorRatePercent: parsed.report?.error_rate_percent ?? 0,
+          errorRatePercent: round(parsed.report?.error_rate_percent ?? 0, 4),
           p95Ms: parsed.report?.response_time_p95 ?? 0,
         },
         transactionCount: parsed.transaction_report.length,
@@ -173,12 +175,13 @@ export function registerGetHistoryTool(server: McpServer, ctx: ToolContext): voi
           .sort((a, b) => b.impact_percent - a.impact_percent)
           .slice(0, TOP_TRANSACTIONS)
           .map(t => ({
-            name: t.name,
+            name: t.name ?? UNNAMED,
             totalRequests: t.total_requests,
             p95Ms: t.response_time_p95,
             averageMs: t.response_time_average ?? null,
-            memoryMax: t.memory_max ?? null,
-            impactPercent: t.impact_percent,
+            memoryMax:
+              t.memory_max === null || t.memory_max === undefined ? null : Math.round(t.memory_max),
+            impactPercent: round(t.impact_percent, 4),
           })),
         timeline: granularity === 'day' ? complete : toDaily(complete),
         pendingBuckets: hourly.length - end,
