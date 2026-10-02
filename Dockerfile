@@ -22,7 +22,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
 # ---- runtime: distroless Node 24, no shell, no npm, runs as uid 65532 ("nonroot") ----
-FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:bb6b03d81066993293a10feda7250e8e1cc034035fe9b61cfceededa7c8bf04d AS runtime
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:9eeb7f5887d0e239e78264b06f7f11d2e14be534050481803a9e4728fcdd278e AS runtime
 
 # The MCP Registry verifies ownership of OCI packages through this label (read from the image config).
 LABEL io.modelcontextprotocol.server.name="io.github.abuhamza/tideways-mcp-server" \
