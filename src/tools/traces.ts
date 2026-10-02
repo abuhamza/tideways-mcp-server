@@ -25,7 +25,7 @@ import {
 export const TRACE_LIMIT = 30;
 const TOP_LAYERS = 3;
 
-const tracesResponse = z.object({
+export const tracesResponse = z.object({
   traces: z
     .array(
       z.object({
@@ -113,8 +113,7 @@ export const searchTracesOutput = z.object({
         .array(z.string())
         .describe(
           'Bottlenecks Tideways detected in this trace, e.g. "nplus1" (N+1 queries or calls; the ' +
-            'observation bottleneck-nplus1), "wait", "sql", "http". There is no filter for them; ' +
-            'scan several windows.'
+            'observation bottleneck-nplus1), "wait", "sql", "http". There is no filter for them.'
         ),
       topLayers: z
         .array(

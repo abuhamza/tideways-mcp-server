@@ -12,6 +12,7 @@ import { callTool, startTestServer, textOf, type TestServer } from '../helpers/h
 
 const TOOL_NAMES = [
   'tideways_list_projects',
+  'tideways_list_services',
   'tideways_get_performance',
   'tideways_get_performance_summary',
   'tideways_list_issues',
@@ -42,7 +43,7 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     expect(server.client.getServerCapabilities()).toEqual({ tools: { listChanged: false } });
   });
 
-  it('lists exactly the seven read-only tools with output schemas', async () => {
+  it('lists exactly the eight read-only tools with output schemas', async () => {
     server = await startTestServer({});
     const { tools } = await server.client.listTools();
     expect(tools.map(t => t.name)).toEqual(TOOL_NAMES);
@@ -59,15 +60,17 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     }
   });
 
-  it('tells the model how to find services, N+1 traces and past windows', async () => {
+  it('tells the model how to find services, N+1 examples and past windows', async () => {
     server = await startTestServer({});
     const instructions = server.client.getInstructions() ?? '';
     expect(instructions).toContain('default service');
     expect(instructions).toContain('cannot switch service');
     expect(instructions).toContain('production only');
     expect(instructions).toContain('an unknown environment or service fails with an error');
-    expect(instructions).toContain('one word of a suspected transaction or URL');
-    expect(instructions).toContain('"nplus1"');
+    expect(instructions).toContain('tideways_list_services with "search"');
+    expect(instructions).toContain('cannot filter traces by bottleneck');
+    expect(instructions).toContain('do not infer N+1 queries from slow-SQL issues');
+    expect(instructions).not.toContain('several time windows');
     expect(instructions).toContain('yesterday 14:00-16:00');
     expect(instructions).not.toContain('When something is not found');
 
@@ -85,7 +88,7 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
 
     for (const tool of tools.filter(t => 'service' in (t.inputSchema.properties ?? {}))) {
       expect(describedProperty(tool.name, 'inputSchema', 'service'), tool.name).toContain(
-        'tideways_list_issues'
+        'tideways_list_services'
       );
     }
     const search = describedProperty('tideways_search_traces', 'inputSchema', 'search');
@@ -103,10 +106,11 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     ).traces?.items?.properties;
     expect(traceItem?.bottlenecks?.description).toContain('nplus1');
     expect(traceItem?.bottlenecks?.description).toContain('no filter');
-    expect(byName.get('tideways_get_observations')?.description).toContain(
-      'tideways_search_traces'
-    );
-    expect(byName.get('tideways_get_observations')?.description).toContain('several time windows');
+    expect(traceItem?.bottlenecks?.description).not.toContain('several windows');
+    const observations = byName.get('tideways_get_observations')?.description ?? '';
+    expect(observations).toContain('cannot filter traces by bottleneck');
+    expect(observations).toContain('lists recent affected traces');
+    expect(observations).not.toContain('several time windows');
   });
 
   it('explains scope limits, partial periods and units in the tool metadata', async () => {
@@ -231,6 +235,7 @@ describe('strict inputs', () => {
   it.each([
     ['tideways_list_projects', 'service'],
     ['tideways_list_issues', 'service'],
+    ['tideways_list_services', 'service'],
     ['tideways_get_history', 'environment'],
     ['tideways_get_performance', 'bogus'],
     ['tideways_get_observations', 'bogus'],

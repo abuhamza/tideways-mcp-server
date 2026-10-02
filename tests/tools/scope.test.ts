@@ -33,7 +33,7 @@ describe('scope checks: Tideways answering for another environment or service', 
     const result = await callTool(server, tool, { service: 'voucher-api' });
     expect(result.isError).toBe(true);
     expect(textOf(result)).toMatch(SERVICE_ERROR);
-    expect(textOf(result)).toContain('tideways_list_issues');
+    expect(textOf(result)).toContain('tideways_list_services');
   });
 
   it.each([

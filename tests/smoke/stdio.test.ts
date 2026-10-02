@@ -59,7 +59,7 @@ describe('built binary over stdio', () => {
     try {
       expect(client.getServerVersion()?.version).toBe(pkg.version);
       const { tools } = await client.listTools();
-      expect(tools).toHaveLength(7);
+      expect(tools).toHaveLength(8);
     } finally {
       await client.close();
     }
