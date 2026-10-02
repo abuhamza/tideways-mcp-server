@@ -69,7 +69,6 @@ describe('tideways_search_traces', () => {
     await callTool(server, 'tideways_search_traces', {
       environment: 'staging',
       service: 'worker',
-      transaction: 'App\\Command\\Import',
       search: 'checkout',
       from: '2026-09-30 11:30',
       to: '2026-09-30 11:40',
@@ -77,12 +76,10 @@ describe('tideways_search_traces', () => {
       maxResponseTimeMs: 5000,
       withCallgraph: true,
       sortBy: 'response_time',
-      sortOrder: 'desc',
     });
     expect(Object.fromEntries(server.api.requests[0]?.url.searchParams ?? [])).toEqual({
       env: 'staging',
       s: 'worker',
-      transaction_name: 'App\\Command\\Import',
       search: 'checkout',
       min_date: '2026-09-30 11:30',
       max_date: '2026-09-30 11:40',
@@ -90,7 +87,6 @@ describe('tideways_search_traces', () => {
       max_response_time_ms: '5000',
       has_callgraph: 'true',
       sort_by: 'response_time',
-      sort_order: 'DESC',
     });
   });
 
@@ -132,6 +128,35 @@ describe('tideways_search_traces', () => {
     expect(textOf(slow)).toContain('minResponseTimeMs');
     const malformed = await callTool(server, 'tideways_search_traces', { from: 'yesterday' });
     expect(malformed.isError).toBe(true);
+    expect(server.api.requests).toHaveLength(0);
+  });
+
+  it('requires both from and to; Tideways ignores a single bound', async () => {
+    server = await startTestServer({ '/acme/shop/traces': { body: { traces: [] } } });
+    for (const args of [{ from: '2026-09-30 11:00' }, { to: '2026-09-30 11:00' }]) {
+      const result = await callTool(server, 'tideways_search_traces', args);
+      expect(result.isError).toBe(true);
+      expect(textOf(result)).toContain(
+        'Pass both "from" and "to"; Tideways ignores a single bound.'
+      );
+    }
+    expect(server.api.requests).toHaveLength(0);
+  });
+
+  it('no longer takes transaction, sortOrder or sortBy date', async () => {
+    server = await startTestServer({ '/acme/shop/traces': { body: { traces: [] } } });
+    for (const args of [
+      { transaction: 'App\\Command\\Import' },
+      { sortOrder: 'asc' },
+      { sortBy: 'date' },
+    ]) {
+      expect((await callTool(server, 'tideways_search_traces', args)).isError).toBe(true);
+    }
+    const { tools } = await server.client.listTools();
+    const input = tools.find(t => t.name === 'tideways_search_traces')?.inputSchema;
+    expect(Object.keys(input?.properties ?? {})).not.toContain('transaction');
+    expect(Object.keys(input?.properties ?? {})).not.toContain('sortOrder');
+    expect(JSON.stringify(input?.properties?.sortBy)).not.toContain('date');
     expect(server.api.requests).toHaveLength(0);
   });
 

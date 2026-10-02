@@ -56,31 +56,31 @@ export const searchTracesInput = z.strictObject({
   project: projectParam,
   environment: environmentParam,
   service: serviceParam,
-  transaction: z
-    .string()
-    .min(1)
-    .max(500)
-    .optional()
-    .describe(
-      'Exact, full transaction name as traces return it (often longer than the name shown in ' +
-        'the Tideways UI), e.g. "App\\\\Controller\\\\CartController::show". Unsure? Use search first.'
-    ),
   search: z
     .string()
     .min(1)
     .max(200)
     .optional()
     .describe('Word search over transaction name, host and URL tokens (not full-text)'),
-  from: apiMinuteParam.optional().describe('Earliest trace time, "YYYY-MM-DD HH:mm" UTC'),
-  to: apiMinuteParam.optional().describe('Latest trace time (inclusive), "YYYY-MM-DD HH:mm" UTC'),
+  from: apiMinuteParam
+    .optional()
+    .describe('Earliest trace time, "YYYY-MM-DD HH:mm" UTC; needs "to" as well'),
+  to: apiMinuteParam
+    .optional()
+    .describe('Latest trace time (inclusive), "YYYY-MM-DD HH:mm" UTC; needs "from" as well'),
   minResponseTimeMs: z.number().int().min(0).optional(),
   maxResponseTimeMs: z.number().int().min(0).optional(),
   withCallgraph: z
     .boolean()
     .optional()
     .describe('true = only traces that have a full callgraph (profile)'),
-  sortBy: z.enum(['response_time', 'date', 'memory']).optional().describe('API default: date'),
-  sortOrder: z.enum(['asc', 'desc']).optional(),
+  sortBy: z
+    .enum(['response_time', 'memory'])
+    .optional()
+    .describe(
+      'response_time = slowest first, memory = highest first; omit for newest first. ' +
+        'Without from/to, sorted results span all retained traces (~30 days).'
+    ),
   detail: detailParam,
 });
 
@@ -151,13 +151,16 @@ export function registerSearchTracesTool(server: McpServer, ctx: ToolContext): v
       description:
         `Find individual request traces (at most ${TRACE_LIMIT} per call, newest first unless sortBy is set) ` +
         'with response time, memory, bottlenecks and the slowest layers. Use to investigate specific slow ' +
-        'or failing requests; filter by transaction, text, time window and response time.',
+        'or failing requests; filter by text, time window and response time.',
       inputSchema: searchTracesInput,
       outputSchema: searchTracesOutput,
       annotations: READ_ONLY_ANNOTATIONS,
       _meta: LARGE_RESULT_META,
     },
     async args => {
+      if ((args.from === undefined) !== (args.to === undefined)) {
+        throw new Error('Pass both "from" and "to"; Tideways ignores a single bound.');
+      }
       const fromDate = args.from === undefined ? undefined : parseApiMinute(args.from);
       const toDate = args.to === undefined ? undefined : parseApiMinute(args.to);
       if (fromDate && toDate && fromDate >= toDate) {
@@ -176,7 +179,6 @@ export function registerSearchTracesTool(server: McpServer, ctx: ToolContext): v
       const body = await ctx.http.get(apiPath(ref.organization, ref.project, 'traces'), {
         query: {
           ...scopeQuery(ctx, args.environment, args.service),
-          transaction_name: args.transaction,
           search: args.search,
           min_date: args.from,
           max_date: args.to,
@@ -184,7 +186,6 @@ export function registerSearchTracesTool(server: McpServer, ctx: ToolContext): v
           max_response_time_ms: args.maxResponseTimeMs,
           has_callgraph: args.withCallgraph === true ? 'true' : undefined,
           sort_by: args.sortBy,
-          sort_order: args.sortOrder?.toUpperCase(),
         },
         scope: 'traces',
         resource: `traces of ${label}`,

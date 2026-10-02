@@ -82,9 +82,6 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
         'tideways_list_issues'
       );
     }
-    expect(describedProperty('tideways_search_traces', 'inputSchema', 'transaction')).toContain(
-      'search'
-    );
     const traceItem = (
       byName.get('tideways_search_traces')?.outputSchema?.properties as Record<
         string,
