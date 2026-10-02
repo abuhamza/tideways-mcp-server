@@ -18,7 +18,7 @@ A read-only [Model Context Protocol](https://modelcontextprotocol.io) server for
 | `tideways_get_history` | Day, week or month report for a past date |
 | `tideways_get_observations` | Configuration problems and code bottlenecks Tideways detected (e.g. N+1 queries) |
 
-All tools except `tideways_list_projects` take an optional `project` (`name` or `organization/name`). Tools that return API data take `detail: "full"` to include the unmodified response.
+All tools except `tideways_list_projects` take an optional `project` (`name` or `organization/name`). Tools with large responses take `detail: "full"` to include the unmodified response.
 
 ## Setup
 
@@ -68,8 +68,10 @@ Environment variables; empty values count as unset. The server does not load `.e
 - All times are UTC, `YYYY-MM-DD HH:mm`.
 - The API rate limit is per token and clock hour, shared by all projects. `tideways_list_projects` shows the last seen status.
 - `tideways_search_traces` returns at most 30 traces per call; narrow the time window to find others.
+- `search` in `tideways_search_traces` takes one word of a transaction name or URL; several words widen the result. Pass `from` and `to` together.
+- `tideways_get_history` covers production and the default service only. For another environment or service, ask `tideways_get_performance` for a window ending at a past `end`.
 - `tideways_list_issues` takes one type (`error`, `slowsql`, `deprecated`) and one status at a time, 10 issues per page.
-- Tools read the project's default service unless you name one. A project can have several (web, APIs, workers, CLI); issue results name them.
+- Tools read the project's default service unless you name one. A project can have several (web, APIs, workers, CLI); issue results name them. An unknown environment or service fails with an error.
 - Observations such as N+1 queries name the problem, not the transactions. Example traces carry `nplus1` in `bottlenecks`.
 
 ## Security
@@ -85,7 +87,7 @@ Version 2 renames every tool and needs Node.js 22+. `TIDEWAYS_ORG` and `TIDEWAYS
 | `get_performance_metrics` (`ts`, `m`, `env`, `s`) | `tideways_get_performance` (`end`, `minutes`, `environment`, `service`) |
 | `get_performance_summary` (`s`) | `tideways_get_performance_summary` (`service`, `environment`, `hours`) |
 | `get_issues` (`issue_type`, `status`, `page`) | `tideways_list_issues` (`type`, `status`, `page`, `environment`) |
-| `get_traces` | `tideways_search_traces` (`transaction`, `from`/`to`, `withCallgraph`, `sortBy`/`sortOrder`, `minResponseTimeMs`/`maxResponseTimeMs`) |
+| `get_traces` | `tideways_search_traces` (`search`, `from`/`to`, `withCallgraph`, `sortBy`, `minResponseTimeMs`/`maxResponseTimeMs`) |
 | `get_historical_data` | `tideways_get_history` (`date`, `granularity`: `day`, `week` or `month`) |
 
 ## Development
