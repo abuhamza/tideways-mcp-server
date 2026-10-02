@@ -7,6 +7,7 @@ import { num, parseResponse, phpMap, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import { parseApiMinute } from '../tideways/time.js';
 import {
+  assertAnsweredScope,
   byKey,
   criteriaOutput,
   detailParam,
@@ -29,7 +30,7 @@ const summaryResponse = z.object({
   }),
 });
 
-export const performanceSummaryInput = z.object({
+export const performanceSummaryInput = z.strictObject({
   project: projectParam,
   environment: environmentParam,
   service: serviceParam,
@@ -107,6 +108,7 @@ export function registerPerformanceSummaryTool(server: McpServer, ctx: ToolConte
         resource: `the performance summary of ${label}`,
       });
       const { summary } = parseResponse(summaryResponse, body, 'summary');
+      assertAnsweredScope(ctx, { environment, service }, summary.criteria ?? {});
 
       const all: Bucket[] = Object.entries(summary.by_time)
         .sort(byKey)

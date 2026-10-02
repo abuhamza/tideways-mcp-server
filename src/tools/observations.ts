@@ -6,6 +6,7 @@ import { apiPath } from '../tideways/http.js';
 import { parseResponse, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import {
+  assertAnsweredScope,
   environmentParam,
   jsonResult,
   projectParam,
@@ -31,7 +32,7 @@ const observationsResponse = z.object({
   criteria: z.object({ environment: text, service: text, status: text }).optional(),
 });
 
-export const getObservationsInput = z.object({
+export const getObservationsInput = z.strictObject({
   project: projectParam,
   environment: environmentParam,
   service: serviceParam,
@@ -67,7 +68,10 @@ export function registerGetObservationsTool(server: McpServer, ctx: ToolContext)
       description:
         'Automatic findings Tideways made for a project: PHP configuration problems (e.g. OPcache ' +
         'buffers, timeouts) and code bottlenecks detected in traces (e.g. N+1 queries, sleep, waits). ' +
-        'Use for a quick health check or optimization ideas.',
+        'Use for a quick health check or optimization ideas. The API names each finding but not the ' +
+        'affected transactions: for examples, call tideways_search_traces with one word of a suspected ' +
+        'transaction or URL over several time windows and look for the matching bottleneck (e.g. ' +
+        '"nplus1"), or follow the link to the Tideways UI.',
       inputSchema: getObservationsInput,
       outputSchema: getObservationsOutput,
       annotations: READ_ONLY_ANNOTATIONS,
@@ -81,6 +85,7 @@ export function registerGetObservationsTool(server: McpServer, ctx: ToolContext)
         resource: `observations of ${label}`,
       });
       const parsed = parseResponse(observationsResponse, body, 'observations');
+      assertAnsweredScope(ctx, { environment, service }, parsed.criteria ?? {});
       const output: GetObservationsOutput = {
         project: label,
         criteria: {

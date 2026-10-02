@@ -8,7 +8,7 @@ import { createToolContext } from '../../src/context.js';
 import { createLogger } from '../../src/logger.js';
 import { createServer, SERVER_INSTRUCTIONS } from '../../src/server.js';
 import { createFakeApi } from '../helpers/fake-api.js';
-import { startTestServer, type TestServer } from '../helpers/harness.js';
+import { callTool, startTestServer, textOf, type TestServer } from '../helpers/harness.js';
 
 const TOOL_NAMES = [
   'tideways_list_projects',
@@ -59,6 +59,111 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     }
   });
 
+  it('tells the model how to find services, N+1 traces and past windows', async () => {
+    server = await startTestServer({});
+    const instructions = server.client.getInstructions() ?? '';
+    expect(instructions).toContain('default service');
+    expect(instructions).toContain('cannot switch service');
+    expect(instructions).toContain('production only');
+    expect(instructions).toContain('an unknown environment or service fails with an error');
+    expect(instructions).toContain('one word of a suspected transaction or URL');
+    expect(instructions).toContain('"nplus1"');
+    expect(instructions).toContain('yesterday 14:00-16:00');
+    expect(instructions).not.toContain('When something is not found');
+
+    const { tools } = await server.client.listTools();
+    const byName = new Map(tools.map(t => [t.name, t]));
+    const describedProperty = (
+      tool: string,
+      schema: 'inputSchema' | 'outputSchema',
+      key: string
+    ) => {
+      const properties = byName.get(tool)?.[schema]?.properties as
+        Record<string, { description?: string }> | undefined;
+      return properties?.[key]?.description ?? '';
+    };
+
+    for (const tool of tools.filter(t => 'service' in (t.inputSchema.properties ?? {}))) {
+      expect(describedProperty(tool.name, 'inputSchema', 'service'), tool.name).toContain(
+        'tideways_list_issues'
+      );
+    }
+    const search = describedProperty('tideways_search_traces', 'inputSchema', 'search');
+    expect(search).toContain('One whole word');
+    expect(search).toContain('widen');
+    expect(describedProperty('tideways_search_traces', 'inputSchema', 'from')).toContain(
+      'needs "to"'
+    );
+    expect(byName.get('tideways_search_traces')?.description).not.toContain('transaction,');
+    const traceItem = (
+      byName.get('tideways_search_traces')?.outputSchema?.properties as Record<
+        string,
+        { items?: { properties?: Record<string, { description?: string }> } }
+      >
+    ).traces?.items?.properties;
+    expect(traceItem?.bottlenecks?.description).toContain('nplus1');
+    expect(traceItem?.bottlenecks?.description).toContain('no filter');
+    expect(byName.get('tideways_get_observations')?.description).toContain(
+      'tideways_search_traces'
+    );
+    expect(byName.get('tideways_get_observations')?.description).toContain('several time windows');
+  });
+
+  it('explains scope limits, partial periods and units in the tool metadata', async () => {
+    server = await startTestServer({});
+    const { tools } = await server.client.listTools();
+    const byName = new Map(tools.map(t => [t.name, t]));
+    type Props = Record<string, { description?: string }>;
+    const prop = (tool: string, schema: 'inputSchema' | 'outputSchema', key: string): string =>
+      (byName.get(tool)?.[schema]?.properties as Props | undefined)?.[key]?.description ?? '';
+    const nested = (tool: string, path: string[]): string => {
+      let node: unknown = byName.get(tool)?.outputSchema;
+      for (const key of path) {
+        const n = node as { properties?: Record<string, unknown>; items?: unknown };
+        node = key === '[]' ? n.items : n.properties?.[key];
+      }
+      return (node as { description?: string }).description ?? '';
+    };
+
+    const history = byName.get('tideways_get_history')?.description ?? '';
+    expect(history).toContain("production and the project's default service only");
+    expect(history).toContain('tideways_get_performance with end and minutes=1440');
+    expect(history).toContain('pendingBuckets > 0');
+    expect(prop('tideways_get_history', 'outputSchema', 'pendingBuckets')).toContain(
+      'report totals cover only part of the period'
+    );
+    expect(prop('tideways_get_history', 'outputSchema', 'transactionCount')).toContain('top 20');
+    expect(prop('tideways_get_history', 'outputSchema', 'timeline')).toContain('can be partial');
+    expect(nested('tideways_get_history', ['transactions', '[]', 'memoryMax'])).toContain('KB');
+
+    const issues = byName.get('tideways_list_issues')?.description ?? '';
+    expect(issues).toContain('default service');
+    expect(issues).toContain('There is no time filter');
+    expect(nested('tideways_list_issues', ['issues', '[]', 'occurrences'])).toContain(
+      'not limited to any period'
+    );
+    expect(nested('tideways_list_issues', ['issues', '[]', 'transactions'])).toContain(
+      'transactionCount'
+    );
+    expect(prop('tideways_list_issues', 'inputSchema', 'status')).toContain('triaged');
+    expect(prop('tideways_list_issues', 'inputSchema', 'status')).toContain(
+      '"new" currently returns the same list as "open"'
+    );
+
+    expect(byName.get('tideways_get_performance')?.description).toContain('Older windows');
+    expect(nested('tideways_get_performance', ['totals', 'downstreamAverageMs'])).toContain(
+      'autoloading'
+    );
+    expect(nested('tideways_get_performance', ['transactions', '[]', 'memory'])).toContain('KB');
+    expect(prop('tideways_list_projects', 'outputSchema', 'rateLimit')).toContain(
+      'null until another tool'
+    );
+    expect(prop('tideways_get_performance', 'inputSchema', 'project')).toContain('defaultProject');
+    expect(prop('tideways_get_performance', 'inputSchema', 'environment')).toContain(
+      'criteria.environment'
+    );
+  });
+
   it('lets hosts accept large results only on tools with a detail parameter', async () => {
     server = await startTestServer({});
     const { tools } = await server.client.listTools();
@@ -105,5 +210,37 @@ describe('MCP server surface (2026-07-28 protocol)', () => {
       await client.close();
       await handler.close();
     }
+  });
+});
+
+describe('strict inputs', () => {
+  let server: TestServer | undefined;
+  afterEach(async () => {
+    await server?.close();
+    server = undefined;
+  });
+
+  it('advertises additionalProperties: false on every input schema', async () => {
+    server = await startTestServer({});
+    const { tools } = await server.client.listTools();
+    for (const tool of tools) {
+      expect(tool.inputSchema.additionalProperties, tool.name).toBe(false);
+    }
+  });
+
+  it.each([
+    ['tideways_list_projects', 'service'],
+    ['tideways_list_issues', 'service'],
+    ['tideways_get_history', 'environment'],
+    ['tideways_get_performance', 'bogus'],
+    ['tideways_get_observations', 'bogus'],
+    ['tideways_search_traces', 'bogus'],
+  ])('%s rejects the unknown argument "%s" by name', async (tool, key) => {
+    server = await startTestServer({});
+    const args = tool === 'tideways_get_history' ? { date: '2026-09-29' } : {};
+    const result = await callTool(server, tool, { ...args, [key]: 'x' });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain(key);
+    expect(server.api.requests).toHaveLength(0);
   });
 });

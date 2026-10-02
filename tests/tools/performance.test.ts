@@ -143,11 +143,36 @@ describe('tideways_get_performance', () => {
     expect(textOf(result)).toContain('"metrics" scope');
   });
 
+  it('reads transactions without a name and rounds percentages and memory', async () => {
+    const [first] = performance.application.by_transactions;
+    const body = {
+      application: {
+        ...performance.application,
+        total: { ...performance.application.total, error_rate: 0.01859900693499037 },
+        by_transactions: [{ ...first, name: null, memory: 475998.7, impact: 18.123456789 }],
+      },
+    };
+    server = await startTestServer({ '/acme/shop/performance': { body } });
+    const result = await callTool(server, 'tideways_get_performance');
+    expect(result.isError).toBeUndefined();
+    const data = result.structuredContent as PerformanceOutput;
+    expect(data.totals.errorRatePercent).toBe(0.0186);
+    expect(data.transactions[0]).toMatchObject({
+      name: '(unnamed)',
+      memory: 475999,
+      impactPercent: 18.1235,
+    });
+  });
+
   it('reports an unexpected response shape instead of crashing', async () => {
     server = await startTestServer({ '/acme/shop/performance': { body: { application: 'nope' } } });
     const result = await callTool(server, 'tideways_get_performance');
     expect(result.isError).toBe(true);
     expect(textOf(result)).toContain('unexpected response shape for performance');
+    expect(textOf(result)).toContain(
+      'This tool cannot read that response; try another date or tool, and report it at ' +
+        'https://github.com/abuhamza/tideways-mcp-server/issues.'
+    );
   });
 });
 
@@ -180,7 +205,9 @@ describe('tideways_get_performance_summary', () => {
 
   it('defaults to 24 hours and passes environment and service', async () => {
     server = await startTestServer({
-      '/acme/shop/summary': { body: summary('2026-09-01 00:00', '2026-09-30 12:30') },
+      '/acme/shop/summary': {
+        body: summary('2026-09-01 00:00', '2026-09-30 12:30', 2, 'staging'),
+      },
     });
     const result = await callTool(server, 'tideways_get_performance_summary', {
       environment: 'staging',

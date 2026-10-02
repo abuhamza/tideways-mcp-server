@@ -7,6 +7,7 @@ import { num, parseResponse, phpMap, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import {
   apiMinuteParam,
+  assertAnsweredScope,
   byKey,
   criteriaOutput,
   detailParam,
@@ -16,9 +17,11 @@ import {
   projectParam,
   rawOutput,
   READ_ONLY_ANNOTATIONS,
+  round,
   scopeQuery,
   serviceParam,
   toCriteria,
+  UNNAMED,
 } from './shared.js';
 
 const criteriaSchema = z.object({
@@ -36,7 +39,7 @@ const performanceResponse = z.object({
     by_transactions: z
       .array(
         z.object({
-          name: z.string(),
+          name: text,
           requests: num,
           response_time_average: num,
           response_time_worst: num,
@@ -60,7 +63,7 @@ const performanceResponse = z.object({
   }),
 });
 
-export const performanceInput = z.object({
+export const performanceInput = z.strictObject({
   project: projectParam,
   environment: environmentParam,
   service: serviceParam,
@@ -90,7 +93,10 @@ export const performanceOutput = z.object({
     medianMs: z.number(),
     downstreamAverageMs: z
       .record(z.string(), z.number())
-      .describe('Average time per request spent in each layer (sql, http, cache, io, ...)'),
+      .describe(
+        'Average ms per request in each layer: sql, http, cache, al = autoloading, ct = compiling, ' +
+          'io = file I/O, dns, runq = waiting for CPU, sleep, shell'
+      ),
   }),
   transactions: z
     .array(
@@ -103,7 +109,7 @@ export const performanceOutput = z.object({
         memory: z
           .number()
           .nullable()
-          .describe('Memory as reported by Tideways (unit undocumented)'),
+          .describe("Peak memory in KB (same scale as traces' memoryKb)"),
         impactPercent: z.number().nullable(),
       })
     )
@@ -129,10 +135,11 @@ export function registerPerformanceTool(server: McpServer, ctx: ToolContext): vo
     {
       title: 'Get performance metrics',
       description:
-        'Per-minute performance of a project over the last 1-1440 minutes: totals (requests, error ' +
-        'rate, p95/median/average response time, time per layer), the top 20 transactions by impact, ' +
-        'and a timeline. Use for "how is the app doing right now / in the last hours". For 15-minute ' +
-        'trends over 30 days use tideways_get_performance_summary; for past days use tideways_get_history.',
+        'Performance of any window of 1-1440 minutes ending at "end" (default now) within the last ' +
+        '~30 days: totals (requests, error rate, p95/median/average response time, time per layer), ' +
+        'the top 20 transactions by impact, and a timeline. Older windows return zeros; use ' +
+        'tideways_get_history for them. For 15-minute trends over 30 days use ' +
+        'tideways_get_performance_summary.',
       inputSchema: performanceInput,
       outputSchema: performanceOutput,
       annotations: READ_ONLY_ANNOTATIONS,
@@ -147,13 +154,14 @@ export function registerPerformanceTool(server: McpServer, ctx: ToolContext): vo
         resource: `performance data of ${label}`,
       });
       const app = parseResponse(performanceResponse, body, 'performance').application;
+      assertAnsweredScope(ctx, { environment, service }, app.criteria ?? {});
       const total = app.total;
       const output: PerformanceOutput = {
         project: label,
         criteria: toCriteria(app.criteria),
         totals: {
           requests: total?.requests ?? 0,
-          errorRatePercent: total?.error_rate ?? 0,
+          errorRatePercent: round(total?.error_rate ?? 0, 4),
           p95Ms: total?.response_time ?? 0,
           averageMs: total?.average ?? 0,
           medianMs: total?.median ?? 0,
@@ -162,13 +170,13 @@ export function registerPerformanceTool(server: McpServer, ctx: ToolContext): vo
           ),
         },
         transactions: app.by_transactions.map(t => ({
-          name: t.name,
+          name: t.name ?? UNNAMED,
           requests: t.requests,
           averageMs: t.response_time_average,
           p95Ms: t.response_time_worst,
           maxMs: t.response_time_slowest,
-          memory: t.memory ?? null,
-          impactPercent: t.impact ?? null,
+          memory: t.memory === null || t.memory === undefined ? null : Math.round(t.memory),
+          impactPercent: t.impact === null || t.impact === undefined ? null : round(t.impact, 4),
         })),
         timeline: Object.entries(app.by_time)
           .sort(byKey)

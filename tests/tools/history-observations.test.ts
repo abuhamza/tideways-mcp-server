@@ -90,6 +90,40 @@ describe('tideways_get_history', () => {
   });
 });
 
+describe('tideways_get_history with unusual numbers and names', () => {
+  let server: TestServer | undefined;
+  afterEach(async () => {
+    await server?.close();
+    server = undefined;
+  });
+
+  it('reads transactions without a name and rounds percentages and memory', async () => {
+    const day = history('day');
+    const body = {
+      ...day,
+      report: { ...day.report, error_rate_percent: 0.0526163944305853 },
+      transaction_report: [
+        {
+          ...day.transaction_report[0],
+          name: null,
+          memory_max: 981846.3059982909,
+          impact_percent: 12.345678901,
+        },
+      ],
+    };
+    server = await startTestServer({ '/acme/shop/history/2026-09-29': { body } });
+    const result = await callTool(server, 'tideways_get_history', { date: '2026-09-29' });
+    expect(result.isError).toBeUndefined();
+    const data = result.structuredContent as GetHistoryOutput;
+    expect(data.report.errorRatePercent).toBe(0.0526);
+    expect(data.transactions[0]).toMatchObject({
+      name: '(unnamed)',
+      memoryMax: 981846,
+      impactPercent: 12.3457,
+    });
+  });
+});
+
 describe('tideways_get_observations', () => {
   let server: TestServer | undefined;
   afterEach(async () => {

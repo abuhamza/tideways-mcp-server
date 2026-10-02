@@ -6,6 +6,7 @@ import { apiPath } from '../tideways/http.js';
 import { num, parseResponse, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import {
+  assertAnsweredScope,
   detailParam,
   environmentParam,
   jsonResult,
@@ -52,7 +53,7 @@ const issuesResponse = z.object({
     .optional(),
 });
 
-export const listIssuesInput = z.object({
+export const listIssuesInput = z.strictObject({
   project: projectParam,
   environment: environmentParam,
   type: z
@@ -64,7 +65,10 @@ export const listIssuesInput = z.object({
   status: z
     .enum(ISSUE_STATUSES)
     .default('open')
-    .describe('Issue status. There is no "all"; call once per status you need.'),
+    .describe(
+      'open (default) = unresolved; resolved, ignored and not_error are triaged states; "new" ' +
+        'currently returns the same list as "open". There is no "all"; call once per status you need.'
+    ),
   page: z.number().int().min(1).default(1).describe('Page number; 10 issues per page'),
   detail: detailParam,
 });
@@ -87,14 +91,24 @@ export const listIssuesOutput = z.object({
       source: z.string().nullable(),
       originatingFunction: z.string().nullable(),
       status: z.string().nullable(),
-      occurrences: z.number(),
-      occurrencesSinceLastRelease: z.number().nullable(),
+      occurrences: z
+        .number()
+        .describe('All occurrences since firstOccurred, not limited to any period'),
+      occurrencesSinceLastRelease: z
+        .number()
+        .nullable()
+        .describe('Occurrences since the last release marker'),
       firstOccurred: z.string().nullable(),
       lastOccurred: z.string().nullable(),
       environments: z.array(z.string()),
       services: z.array(z.string()),
       transactionCount: z.number(),
-      transactions: z.array(z.string()).describe('First 5 affected transactions'),
+      transactions: z
+        .array(z.string())
+        .describe(
+          'First 5 of transactionCount affected transactions, in no particular order; detail ' +
+            '"full" lists all (large)'
+        ),
       topFrame: z.string().nullable().describe('Innermost stack frame of the last occurrence'),
     })
   ),
@@ -115,7 +129,9 @@ export function registerListIssuesTool(server: McpServer, ctx: ToolContext): voi
       title: 'List issues',
       description:
         'List error, slow-SQL or deprecation issues of a project, newest occurrence first, 10 per ' +
-        'page. Use to find what is failing or slow and how often. One type and one status per call.',
+        'page. Use to find what is failing or slow and how often. One type and one status per call. ' +
+        'Lists issues seen in the default service of one environment. There is no time filter; ' +
+        'use lastOccurred to judge recency.',
       inputSchema: listIssuesInput,
       outputSchema: listIssuesOutput,
       annotations: READ_ONLY_ANNOTATIONS,
@@ -130,6 +146,7 @@ export function registerListIssuesTool(server: McpServer, ctx: ToolContext): voi
         resource: `issues of ${label}`,
       });
       const parsed = parseResponse(issuesResponse, body, 'issues');
+      assertAnsweredScope(ctx, { environment }, parsed.criteria ?? {}, { checkService: false });
       const output: ListIssuesOutput = {
         project: label,
         criteria: {

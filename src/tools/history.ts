@@ -14,6 +14,8 @@ import {
   projectParam,
   rawOutput,
   READ_ONLY_ANNOTATIONS,
+  round,
+  UNNAMED,
 } from './shared.js';
 
 const TOP_TRANSACTIONS = 20;
@@ -31,7 +33,7 @@ const historyResponse = z.object({
   transaction_report: z
     .array(
       z.object({
-        name: z.string(),
+        name: text,
         response_time_p95: num,
         response_time_average: z.number().nullish(),
         total_requests: num,
@@ -42,7 +44,7 @@ const historyResponse = z.object({
     .default([]),
 });
 
-export const getHistoryInput = z.object({
+export const getHistoryInput = z.strictObject({
   project: projectParam,
   date: apiDateParam.describe(
     'Day to report, "YYYY-MM-DD". For week the API uses the Monday of that week, for month the 1st.'
@@ -65,7 +67,12 @@ export const getHistoryOutput = z.object({
     errorRatePercent: z.number(),
     p95Ms: z.number(),
   }),
-  transactionCount: z.number(),
+  transactionCount: z
+    .number()
+    .describe(
+      `Transactions in the full report; only the top ${TOP_TRANSACTIONS} by impact are listed, ` +
+        'detail "full" has all under raw.transaction_report'
+    ),
   transactions: z
     .array(
       z.object({
@@ -73,7 +80,10 @@ export const getHistoryOutput = z.object({
         totalRequests: z.number(),
         p95Ms: z.number(),
         averageMs: z.number().nullable(),
-        memoryMax: z.number().nullable(),
+        memoryMax: z
+          .number()
+          .nullable()
+          .describe("Peak memory in KB (same scale as traces' memoryKb)"),
         impactPercent: z.number(),
       })
     )
@@ -82,10 +92,16 @@ export const getHistoryOutput = z.object({
     .array(
       z.object({ time: z.string(), requests: z.number(), errors: z.number(), p95Ms: z.number() })
     )
-    .describe('Hourly (UTC) for a day; daily (UTC date, max p95) for a week or month'),
+    .describe(
+      'Hourly (UTC) for a day; daily (UTC date, max p95) for a week or month. The first and last ' +
+        "days can be partial because the report follows the organization's calendar"
+    ),
   pendingBuckets: z
     .number()
-    .describe('Trailing hours not aggregated yet (zero-filled by the API), left out'),
+    .describe(
+      'Hours of the period not aggregated yet (zero-filled by the API, left out); when > 0, ' +
+        'report totals cover only part of the period'
+    ),
   raw: rawOutput,
 });
 
@@ -119,7 +135,11 @@ export function registerGetHistoryTool(server: McpServer, ctx: ToolContext): voi
       description:
         'Daily, weekly or monthly performance report for a past date: total requests, error rate, p95, ' +
         `top ${TOP_TRANSACTIONS} transactions by impact and a timeline. Use to compare days or weeks. ` +
-        "Today's report is only complete after the day ends.",
+        'A period that has not ended covers only its finished hours (pendingBuckets > 0), and today ' +
+        'has no data until it ends; compare such periods per day or use ' +
+        "tideways_get_performance_summary. Covers production and the project's default service only; " +
+        'for another environment or service use tideways_get_performance with end and minutes=1440 ' +
+        '(one day per call).',
       inputSchema: getHistoryInput,
       outputSchema: getHistoryOutput,
       annotations: READ_ONLY_ANNOTATIONS,
@@ -165,7 +185,7 @@ export function registerGetHistoryTool(server: McpServer, ctx: ToolContext): voi
         },
         report: {
           totalRequests: parsed.report?.total_requests ?? 0,
-          errorRatePercent: parsed.report?.error_rate_percent ?? 0,
+          errorRatePercent: round(parsed.report?.error_rate_percent ?? 0, 4),
           p95Ms: parsed.report?.response_time_p95 ?? 0,
         },
         transactionCount: parsed.transaction_report.length,
@@ -173,12 +193,13 @@ export function registerGetHistoryTool(server: McpServer, ctx: ToolContext): voi
           .sort((a, b) => b.impact_percent - a.impact_percent)
           .slice(0, TOP_TRANSACTIONS)
           .map(t => ({
-            name: t.name,
+            name: t.name ?? UNNAMED,
             totalRequests: t.total_requests,
             p95Ms: t.response_time_p95,
             averageMs: t.response_time_average ?? null,
-            memoryMax: t.memory_max ?? null,
-            impactPercent: t.impact_percent,
+            memoryMax:
+              t.memory_max === null || t.memory_max === undefined ? null : Math.round(t.memory_max),
+            impactPercent: round(t.impact_percent, 4),
           })),
         timeline: granularity === 'day' ? complete : toDaily(complete),
         pendingBuckets: hourly.length - end,

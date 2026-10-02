@@ -54,7 +54,7 @@
     },
     {
       "name": "tideways_get_performance",
-      "description": "Per-minute performance and top transactions for the last 1-1440 minutes"
+      "description": "Per-minute performance and top transactions for any window of up to 24 h within the last ~30 days"
     },
     {
       "name": "tideways_get_performance_summary",
