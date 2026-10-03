@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.0.0](https://github.com/abuhamza/tideways-mcp-server/compare/v1.2.0...v2.0.0) (2026-10-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* v2 requires Node >= 22, no longer loads .env files, and drops TIDEWAYS_MAX_RETRIES. Only TIDEWAYS_TOKEN is required; TIDEWAYS_ORG and TIDEWAYS_PROJECT are optional. All tools are renamed with a tideways_ prefix (see the migration table in the pull request).
+
+### Features
+
+* add tideways_list_services and stop suggesting trace sampling for N+1 ([#18](https://github.com/abuhamza/tideways-mcp-server/issues/18)) ([36d3306](https://github.com/abuhamza/tideways-mcp-server/commit/36d33067417459b1cdbeb8cf31d2267bf0d30b06))
+* publish to the MCP Registry, as an MCPB bundle and as a ghcr.io image ([#15](https://github.com/abuhamza/tideways-mcp-server/issues/15)) ([ade1220](https://github.com/abuhamza/tideways-mcp-server/commit/ade1220528fe1a0d2123572225c86c5139a9d8e6))
+* v2 on MCP SDK v2 with seven read-only Tideways tools ([#11](https://github.com/abuhamza/tideways-mcp-server/issues/11)) ([0c749b8](https://github.com/abuhamza/tideways-mcp-server/commit/0c749b8259b09c6502d43177938852555537752c))
+
+
+### Bug Fixes
+
+* **deps:** update the distroless Node 24 base image for OpenSSL fixes ([#17](https://github.com/abuhamza/tideways-mcp-server/issues/17)) ([f5f6d20](https://github.com/abuhamza/tideways-mcp-server/commit/f5f6d2027247a84d4b7b9e0f37f757dd4998a955))
+* fail on wrong scopes and unknown arguments, and clarify tool guidance ([#16](https://github.com/abuhamza/tideways-mcp-server/issues/16)) ([0516d81](https://github.com/abuhamza/tideways-mcp-server/commit/0516d81c0fd86416384e8f957080f45e630e3749))
+
 ## [1.2.0](https://github.com/abuhamza/tideways-mcp-server/compare/v1.0.2...v1.2.0) (2026-09-30)
 
 
