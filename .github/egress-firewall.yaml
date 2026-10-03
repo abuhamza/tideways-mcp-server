@@ -16,6 +16,3 @@ allow:
   - release-assets.githubusercontent.com
   # The Claude Code action's npm dependencies (bun install)
   - registry.npmjs.org
-  # step-security/harden-runner: policy and telemetry
-  - agent.api.stepsecurity.io
-  - prod.app-api.stepsecurity.io
