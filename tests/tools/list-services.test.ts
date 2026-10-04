@@ -332,6 +332,22 @@ describe('tideways_list_services', () => {
     expect(data.search).toEqual({ word: 'voucher', searched: 10, notSearched: 2 });
   });
 
+  it('searches 25 services on a 250-request hourly rate limit', async () => {
+    const names = Array.from({ length: 30 }, (_, i) => [`svc-${String(i + 1).padStart(2, '0')}`]);
+    const pages = issuesByType({ error: issuesNaming(names) });
+    server = await startTestServer({
+      '/acme/shop/issues': url => ({
+        ...pages(url),
+        headers: { 'x-ratelimit-limit': '250', 'x-ratelimit-remaining': '247' },
+      }),
+      '/acme/shop/traces': { body: { traces: [] } },
+    });
+    const data = (await callTool(server, 'tideways_list_services', { search: 'voucher' }))
+      .structuredContent as ListServicesOutput;
+    expect(traceQueries(server)).toHaveLength(25);
+    expect(data.search).toEqual({ word: 'voucher', searched: 25, notSearched: 6 });
+  });
+
   it('searches no service when 10 or fewer requests of the hourly rate limit remain', async () => {
     const pages = issuesByType({ error: issuesNaming([['a'], ['b'], ['c'], ['d']]) });
     server = await startTestServer({

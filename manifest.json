@@ -50,7 +50,7 @@
   "tools": [
     {
       "name": "tideways_list_projects",
-      "description": "Projects, scopes and rate-limit status of the API token"
+      "description": "Projects and scopes of the API token, and the organization's rate-limit status"
     },
     {
       "name": "tideways_list_services",

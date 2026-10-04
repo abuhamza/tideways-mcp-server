@@ -28,7 +28,7 @@ Before every commit: `npm run typecheck && npm run lint && npm run format:check 
 - (10-02) History is production and the default service only. Old history reports can hold transactions with a null `name`.
 - (10-02) Unknown `env`/`s` fall back to the defaults; `criteria` shows what was used (the tools throw on a mismatch).
 - `/summary` always returns ~30 days (~218 KB); trailing all-zero buckets mean "not aggregated yet".
-- The rate limit is per token per clock hour, shared by all projects. `X-RateLimit-Reset` is an epoch in seconds. 429 is final until the reset; `/_token`, 401 and 404 responses are not counted.
+- The rate limit is per organization per clock hour and depends on the plan; all tokens and projects of the organization share it. `X-RateLimit-Reset` is an epoch in seconds. 429 is final until the reset; `/_token`, 401 and 404 responses are not counted.
 - Error bodies come as `{error}`, `{status, msg}` or a bare JSON string (`extractApiMessage` handles all three).
 
 ## Adding or changing a tool
