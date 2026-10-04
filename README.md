@@ -4,6 +4,8 @@
 [![CI](https://github.com/abuhamza/tideways-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/abuhamza/tideways-mcp-server/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/abuhamza/tideways-mcp-server/badge)](https://scorecard.dev/viewer/?uri=github.com/abuhamza/tideways-mcp-server)
 
+An unofficial, community-maintained server, not affiliated with or supported by Tideways. For Tideways' own tooling, see the official [Tideways CLI](https://support.tideways.com/documentation/reference/commandline-interface/overview.html).
+
 A read-only [Model Context Protocol](https://modelcontextprotocol.io) server for [Tideways](https://tideways.com/). It lets an AI assistant answer questions such as "why was checkout slow yesterday?" from your performance data, issues and traces. It only calls `GET` endpoints of the [Tideways REST API](https://support.tideways.com/documentation/reference/api/index.html).
 
 ## Install
