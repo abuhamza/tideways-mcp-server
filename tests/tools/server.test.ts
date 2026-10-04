@@ -73,6 +73,11 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     expect(instructions).not.toContain('several time windows');
     expect(instructions).toContain('yesterday 14:00-16:00');
     expect(instructions).not.toContain('When something is not found');
+    expect(instructions).toContain(
+      'The hourly API rate limit depends on the Tideways plan and is shared by all tokens and ' +
+        'projects of the organization.'
+    );
+    expect(instructions).not.toContain('of the token');
 
     const { tools } = await server.client.listTools();
     const byName = new Map(tools.map(t => [t.name, t]));
@@ -161,6 +166,12 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     expect(nested('tideways_get_performance', ['transactions', '[]', 'memory'])).toContain('KB');
     expect(prop('tideways_list_projects', 'outputSchema', 'rateLimit')).toContain(
       'null until another tool'
+    );
+    expect(prop('tideways_list_projects', 'outputSchema', 'rateLimit')).toContain(
+      'shared by all tokens and projects of the organization'
+    );
+    expect(byName.get('tideways_list_projects')?.description).toContain(
+      "the organization's hourly rate limit"
     );
     expect(prop('tideways_get_performance', 'inputSchema', 'project')).toContain('defaultProject');
     expect(prop('tideways_get_performance', 'inputSchema', 'environment')).toContain(
