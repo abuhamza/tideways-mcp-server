@@ -143,6 +143,21 @@ describe('tideways_get_performance', () => {
     expect(textOf(result)).toContain('"metrics" scope');
   });
 
+  it('explains that the hourly rate limit is shared by the whole organization', async () => {
+    server = await startTestServer({
+      '/acme/shop/performance': {
+        status: 429,
+        body: { error: 'Too many requests' },
+        headers: { 'x-ratelimit-limit': '250', 'x-ratelimit-remaining': '0' },
+      },
+    });
+    const result = await callTool(server, 'tideways_get_performance');
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain(
+      '250 requests per hour, shared by all tokens and projects of the organization'
+    );
+  });
+
   it('reads transactions without a name and rounds percentages and memory', async () => {
     const [first] = performance.application.by_transactions;
     const body = {

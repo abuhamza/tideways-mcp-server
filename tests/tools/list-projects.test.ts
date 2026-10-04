@@ -43,6 +43,23 @@ describe('tideways_list_projects', () => {
     });
   });
 
+  it('counts a request refused for a missing scope against the rate limit', async () => {
+    server = await startTestServer({
+      '/_token': { body: tokenInfo },
+      '/acme/shop/performance': {
+        status: 403,
+        body: {},
+        headers: { 'x-ratelimit-limit': '250', 'x-ratelimit-remaining': '41' },
+      },
+    });
+    await callTool(server, 'tideways_get_performance');
+    const result = await callTool(server, 'tideways_list_projects');
+    expect((result.structuredContent as ListProjectsOutput).rateLimit).toMatchObject({
+      limit: 250,
+      remaining: 41,
+    });
+  });
+
   it('still lists projects after the hourly rate limit is used up', async () => {
     server = await startTestServer({
       '/_token': { body: tokenInfo },

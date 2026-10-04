@@ -29,7 +29,8 @@ export function rateLimitMessage(snapshot: RateLimitSnapshot | undefined): strin
     return 'Tideways API rate limit reached. Retry at the start of the next hour.';
   }
   return (
-    `Tideways API rate limit reached (${snapshot.limit} requests per hour, shared by all ` +
-    `projects of this token). It resets at ${snapshot.resetAt.toISOString()}; retry after that.`
+    `Tideways API rate limit reached (${snapshot.limit} requests per hour, shared by all tokens ` +
+    `and projects of the organization). It resets at ${snapshot.resetAt.toISOString()}; retry ` +
+    'after that.'
   );
 }

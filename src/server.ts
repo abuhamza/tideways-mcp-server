@@ -32,7 +32,8 @@ export const SERVER_INSTRUCTIONS = [
   'API cannot filter traces by bottleneck: give the observation link, whose page in the Tideways UI',
   'lists recent affected traces. A trace whose bottlenecks include "nplus1" is a real N+1 example;',
   'do not infer N+1 queries from slow-SQL issues.',
-  'The hourly API rate limit is shared by all projects of the token.',
+  'The hourly API rate limit depends on the Tideways plan and is shared by all tokens and projects',
+  'of the organization.',
 ].join(' ');
 
 /** Build one MCP server instance. The stdio entry calls this once per connection. */

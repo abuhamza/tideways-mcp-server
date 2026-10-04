@@ -33,7 +33,8 @@ export const listProjectsOutput = z.object({
     .describe(
       'Rate-limit headers from the last counted request (null until another tool has made a ' +
         'request in this session; any data call, e.g. tideways_get_observations, fills it). ' +
-        'The hourly limit is shared by all projects of the token.'
+        'The hourly limit depends on the Tideways plan and is shared by all tokens and projects ' +
+        'of the organization.'
     ),
 });
 
@@ -45,7 +46,8 @@ export function registerListProjectsTool(server: McpServer, ctx: ToolContext): v
     {
       title: 'List Tideways projects',
       description:
-        'List the projects, scopes and rate-limit status of the configured Tideways API token. ' +
+        'List the projects and scopes of the configured Tideways API token, and how much of ' +
+        "the organization's hourly rate limit is left. " +
         'Call this first when unsure which project to use, or after a scope or unknown-project error.',
       inputSchema: z.strictObject({}),
       outputSchema: listProjectsOutput,
