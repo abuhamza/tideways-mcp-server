@@ -15,15 +15,16 @@ Before every commit: `npm run typecheck && npm run lint && npm run format:check 
 - Failures are thrown `Error`s whose message says what failed, why, and what to do next; the SDK turns them into `isError` results the model reads.
 - Test fixtures are synthetic. Real Tideways responses stay out of the repository.
 
-## Tideways API facts (live-verified 2026-09-30; entries marked 10-02 on 2026-10-02)
+## Tideways API facts (live-verified 2026-09-30; entries marked 10-02 or 10-04 on those dates)
 
 - Times are UTC `YYYY-MM-DD HH:mm`. History day/week/month boundaries follow the organization's local calendar while its `by_time` keys stay UTC.
 - The default service is project-specific, not `web`: send `env`/`s` only when the caller or config sets them.
 - A project can have many services; no endpoint lists them. Issue items carry `services[]`, the only place other services' names show up (`tideways_list_services` reads them). (10-02) `x:cli` is the CLI context of service `x` and works as `s`.
 - Scopes: `metrics` (performance, summary, history), `traces`, `errors` (issues, observations).
-- `/issues` has no "all" type or status (unknown statuses silently become `open`); 10 per page, no total.
+- (10-04) `/issues` (and `/issues/{id}`) answer in the v2 format with `Accept: application/vnd.tideways.issues.v2+json`; `tideways_list_issues` sends it. In v2, `s` filters and `s=__all` reads every service; `status=all` is open plus ignored; warnings and notices are `issueType=non-fatals&level=warning|notice`; repeated `transactionIds[]` filter by transaction (`criteria.transactionName` echoes it); `pagination{page, totalPages, totalItems}` gives totals. 10 per page; no "all" type. List items carry `message` and `annotations` (slow SQL: `duration`, nanoseconds as a numeric string) but no stack trace or transactions.
+- (10-02) Without the v2 `Accept`, `/issues` ignores `s` (default service only) and turns `all` or any unknown status into `open`.
+- (10-04) `/performance` `by_transactions[].id` is the numeric transaction ID that `transactionIds[]` takes.
 - `/traces` returns at most 30 traces, newest first, without pagination, and has no bottleneck filter ((10-02) the UI's `bottleneckType` is ignored too). Trace `bottlenecks[]` holds values such as `nplus1`, `sql`, `http`, `cache`; observations name findings (`bottleneck-nplus1`) without the affected transactions. (10-02) `transaction_name` matches nothing (even full names); a single `min_date`/`max_date` is ignored; `sort_order` is ignored and `sort_by=date` is not honored (`response_time`, `memory` work).
-- (10-02) `/issues` ignores `s`; its issues appear limited to those seen in the default service.
 - (10-02) History is production and the default service only. Old history reports can hold transactions with a null `name`.
 - (10-02) Unknown `env`/`s` fall back to the defaults; `criteria` shows what was used (the tools throw on a mismatch).
 - `/summary` always returns ~30 days (~218 KB); trailing all-zero buckets mean "not aggregated yet".

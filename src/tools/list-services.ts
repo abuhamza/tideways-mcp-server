@@ -6,7 +6,6 @@ import { TidewaysApiError, type TidewaysErrorKind } from '../tideways/errors.js'
 import { apiPath } from '../tideways/http.js';
 import { parseResponse, text } from '../tideways/parse.js';
 import { projectLabel, type ProjectRef } from '../tideways/projects.js';
-import { ISSUE_TYPES } from './issues.js';
 import {
   assertAnsweredScope,
   environmentParam,
@@ -17,6 +16,8 @@ import {
 } from './shared.js';
 import { stripQuery, TRACE_LIMIT, tracesResponse } from './traces.js';
 
+/** Issue types whose first open page names services. */
+const SERVICE_ISSUE_TYPES = ['error', 'slowsql', 'deprecated'] as const;
 /** One call searches at most this many services. */
 const MAX_SEARCHED_SERVICES = 30;
 const CONCURRENT_SEARCHES = 4;
@@ -218,7 +219,7 @@ export function registerListServicesTool(server: McpServer, ctx: ToolContext): v
       const ref = await ctx.projects.resolve(project);
       const label = projectLabel(ref);
       const pages = await Promise.all(
-        ISSUE_TYPES.map(async issueType => {
+        SERVICE_ISSUE_TYPES.map(async issueType => {
           const body = await ctx.http.get(apiPath(ref.organization, ref.project, 'issues'), {
             query: { issueType, status: 'open', env: environment ?? ctx.defaults.environment },
             scope: 'errors',

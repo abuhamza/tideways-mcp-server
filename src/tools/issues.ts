@@ -3,7 +3,15 @@ import * as z from 'zod/v4';
 
 import type { ToolContext } from '../context.js';
 import { apiPath } from '../tideways/http.js';
-import { num, parseResponse, text } from '../tideways/parse.js';
+import {
+  ALL_SERVICES,
+  ISSUE_TYPES,
+  ISSUES_V2_ACCEPT,
+  issuesV2Response,
+  issueTypeQuery,
+  slowSqlDurationMs,
+} from '../tideways/issues.js';
+import { parseResponse } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import {
   assertAnsweredScope,
@@ -14,60 +22,43 @@ import {
   projectParam,
   rawOutput,
   READ_ONLY_ANNOTATIONS,
+  serviceParam,
   truncate,
 } from './shared.js';
 
-export const ISSUE_TYPES = ['error', 'slowsql', 'deprecated'] as const;
-export const ISSUE_STATUSES = ['open', 'new', 'resolved', 'not_error', 'ignored'] as const;
-const PAGE_SIZE = 10;
+export const ISSUE_STATUSES = ['open', 'all', 'new', 'resolved', 'not_error', 'ignored'] as const;
 const MAX_MESSAGE_LENGTH = 500;
-const MAX_TRANSACTIONS = 5;
-
-const issuesResponse = z.object({
-  issues: z
-    .array(
-      z.object({
-        id: z.union([z.string(), z.number()]).transform(String),
-        issueType: text,
-        type: text,
-        exceptionType: text,
-        lastMessage: text,
-        source: text,
-        originatingFunction: text,
-        status: text,
-        occurrences: num,
-        occurrencesSinceLastRelease: z.number().nullish(),
-        firstOccurred: text,
-        lastOccurred: text,
-        environments: z.array(z.string()).default([]),
-        services: z.array(z.string()).default([]),
-        transactions: z.array(z.string()).default([]),
-        lastStackTrace: z
-          .array(z.object({ file: text, line: z.number().nullish(), function: text }))
-          .default([]),
-      })
-    )
-    .default([]),
-  criteria: z
-    .object({ environment: text, service: text, status: text, page: z.number().nullish() })
-    .optional(),
-});
+const MAX_TRANSACTION_IDS = 20;
 
 export const listIssuesInput = z.strictObject({
   project: projectParam,
   environment: environmentParam,
+  service: serviceParam.describe(
+    'Service, e.g. "web" or "worker". Defaults to the configured service, else all services ' +
+      'of the project; tideways_list_services lists them.'
+  ),
   type: z
     .enum(ISSUE_TYPES)
     .default('error')
     .describe(
-      'error = exceptions and fatal errors, slowsql = slow SQL queries, deprecated = deprecations'
+      'error = exceptions and fatal errors, slowsql = slow SQL queries, deprecated = ' +
+        'deprecations, warning = PHP warnings, notice = PHP notices'
     ),
   status: z
     .enum(ISSUE_STATUSES)
     .default('open')
     .describe(
-      'open (default) = unresolved; resolved, ignored and not_error are triaged states; "new" ' +
-        'currently returns the same list as "open". There is no "all"; call once per status you need.'
+      'open (default) = unresolved; all = open and ignored together; resolved, ignored and ' +
+        'not_error are triaged states; "new" currently returns the same list as "open".'
+    ),
+  transactionIds: z
+    .array(z.number().int().positive())
+    .min(1)
+    .max(MAX_TRANSACTION_IDS)
+    .optional()
+    .describe(
+      'Only issues raised in these transactions: numeric IDs from transactions[].id of ' +
+        'tideways_get_performance.'
     ),
   page: z.number().int().min(1).default(1).describe('Page number; 10 issues per page'),
   detail: detailParam,
@@ -77,7 +68,7 @@ export const listIssuesOutput = z.object({
   project: z.string(),
   criteria: z.object({
     environment: z.string().nullable(),
-    service: z.string().nullable(),
+    service: z.string().nullable().describe('Service whose issues were read; null = all services'),
     type: z.enum(ISSUE_TYPES),
     status: z.string(),
     page: z.number(),
@@ -89,7 +80,7 @@ export const listIssuesOutput = z.object({
       title: z.string().describe('Exception class, or the tables of a slow SQL query'),
       message: z.string().nullable().describe('Last message or SQL, truncated to 500 characters'),
       source: z.string().nullable(),
-      originatingFunction: z.string().nullable(),
+      originatingFunction: z.string().nullable().describe('Always null; source names the code'),
       status: z.string().nullable(),
       occurrences: z
         .number()
@@ -102,21 +93,30 @@ export const listIssuesOutput = z.object({
       lastOccurred: z.string().nullable(),
       environments: z.array(z.string()),
       services: z.array(z.string()),
-      transactionCount: z.number(),
+      durationMs: z
+        .number()
+        .nullable()
+        .describe('Slow SQL queries: duration of the query in ms; null for other types'),
+      transactionCount: z
+        .number()
+        .nullable()
+        .describe('Always null: the list does not carry affected transactions'),
       transactions: z
         .array(z.string())
+        .nullable()
         .describe(
-          'First 5 of transactionCount affected transactions, in no particular order; detail ' +
-            '"full" lists all (large)'
+          'Always null: the list does not carry affected transactions; filter by transaction ' +
+            'with "transactionIds"'
         ),
-      topFrame: z.string().nullable().describe('Innermost stack frame of the last occurrence'),
+      topFrame: z
+        .string()
+        .nullable()
+        .describe('Always null: the list carries no stack trace; source names the file and line'),
     })
   ),
-  hasMore: z
-    .boolean()
-    .describe(
-      'True when the page is full; request the next page for more. The API reports no total.'
-    ),
+  hasMore: z.boolean().describe('True when later pages exist; request the next page for more'),
+  totalItems: z.number().describe('Issues matching the filters on all pages'),
+  totalPages: z.number(),
   raw: rawOutput,
 });
 
@@ -128,59 +128,68 @@ export function registerListIssuesTool(server: McpServer, ctx: ToolContext): voi
     {
       title: 'List issues',
       description:
-        'List error, slow-SQL or deprecation issues of a project, newest occurrence first, 10 per ' +
-        'page. Use to find what is failing or slow and how often. One type and one status per call. ' +
-        'Lists issues seen in the default service of one environment. There is no time filter; ' +
-        'use lastOccurred to judge recency.',
+        'List error, slow-SQL, deprecation, warning or notice issues of a project, newest ' +
+        'occurrence first, 10 per page, with the total count. Use to find what is failing or slow ' +
+        'and how often. Reads all services unless "service" is passed or configured; ' +
+        '"transactionIds" narrows to issues of given transactions. One type and one status per ' +
+        'call. There is no time filter; use lastOccurred to judge recency.',
       inputSchema: listIssuesInput,
       outputSchema: listIssuesOutput,
       annotations: READ_ONLY_ANNOTATIONS,
       _meta: LARGE_RESULT_META,
     },
-    async ({ project, environment, type, status, page, detail }) => {
+    async ({ project, environment, service, type, status, transactionIds, page, detail }) => {
       const ref = await ctx.projects.resolve(project);
       const label = projectLabel(ref);
+      const sentService = service ?? ctx.defaults.service ?? ALL_SERVICES;
       const body = await ctx.http.get(apiPath(ref.organization, ref.project, 'issues'), {
-        query: { issueType: type, status, page, env: environment ?? ctx.defaults.environment },
+        query: {
+          ...issueTypeQuery(type),
+          status,
+          page,
+          env: environment ?? ctx.defaults.environment,
+          s: sentService,
+          'transactionIds[]': transactionIds,
+        },
+        accept: ISSUES_V2_ACCEPT,
         scope: 'errors',
         resource: `issues of ${label}`,
       });
-      const parsed = parseResponse(issuesResponse, body, 'issues');
-      assertAnsweredScope(ctx, { environment }, parsed.criteria ?? {}, { checkService: false });
+      const parsed = parseResponse(issuesV2Response, body, 'issues');
+      const { criteria, pagination } = parsed;
+      assertAnsweredScope(ctx, { environment, service }, criteria ?? {});
+      const currentPage = pagination.page ?? page;
       const output: ListIssuesOutput = {
         project: label,
         criteria: {
-          environment: parsed.criteria?.environment ?? null,
-          service: parsed.criteria?.service ?? null,
+          environment: criteria?.environment ?? null,
+          service: sentService === ALL_SERVICES ? null : (criteria?.service ?? sentService),
           type,
-          status: parsed.criteria?.status ?? status,
-          page: parsed.criteria?.page ?? page,
+          status: criteria?.status ?? status,
+          page: currentPage,
         },
-        issues: parsed.issues.map(issue => {
-          const [frame] = issue.lastStackTrace;
-          return {
-            id: issue.id,
-            type: issue.issueType ?? type,
-            title: issue.type ?? issue.exceptionType ?? 'Unknown',
-            message:
-              issue.lastMessage === null ? null : truncate(issue.lastMessage, MAX_MESSAGE_LENGTH),
-            source: issue.source,
-            originatingFunction: issue.originatingFunction,
-            status: issue.status,
-            occurrences: issue.occurrences,
-            occurrencesSinceLastRelease: issue.occurrencesSinceLastRelease ?? null,
-            firstOccurred: issue.firstOccurred,
-            lastOccurred: issue.lastOccurred,
-            environments: issue.environments,
-            services: issue.services,
-            transactionCount: issue.transactions.length,
-            transactions: issue.transactions.slice(0, MAX_TRANSACTIONS),
-            topFrame: frame
-              ? `${frame.function ?? '?'} (${frame.file ?? '?'}:${frame.line ?? '?'})`
-              : null,
-          };
-        }),
-        hasMore: parsed.issues.length >= PAGE_SIZE,
+        issues: parsed.issues.map(issue => ({
+          id: issue.id,
+          type: issue.issueType ?? type,
+          title: issue.type ?? issue.exceptionType ?? 'Unknown',
+          message: issue.message === null ? null : truncate(issue.message, MAX_MESSAGE_LENGTH),
+          source: issue.source,
+          originatingFunction: null,
+          status: issue.status,
+          occurrences: issue.occurrences,
+          occurrencesSinceLastRelease: issue.occurrencesSinceLastRelease ?? null,
+          firstOccurred: issue.firstOccurred,
+          lastOccurred: issue.lastOccurred,
+          environments: issue.environments,
+          services: issue.services,
+          durationMs: type === 'slowsql' ? slowSqlDurationMs(issue) : null,
+          transactionCount: null,
+          transactions: null,
+          topFrame: null,
+        })),
+        hasMore: currentPage < pagination.totalPages,
+        totalItems: pagination.totalItems,
+        totalPages: pagination.totalPages,
         ...(detail === 'full' ? { raw: body } : {}),
       };
       return jsonResult(output);

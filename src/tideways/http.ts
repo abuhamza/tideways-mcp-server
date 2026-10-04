@@ -8,7 +8,8 @@ import {
 } from './errors.js';
 import { parseRateLimit, rateLimitMessage, type RateLimitSnapshot } from './rate-limit.js';
 
-export type QueryValue = string | number | boolean | undefined;
+/** An array repeats its key once per element, e.g. `ids[]=1&ids[]=2`. */
+export type QueryValue = string | number | boolean | readonly (string | number)[] | undefined;
 
 export interface RequestOptions {
   query?: Record<string, QueryValue>;
@@ -17,6 +18,8 @@ export interface RequestOptions {
   resource: string;
   /** The endpoint does not count against the hourly limit, so the local fail-fast check is skipped. */
   uncounted?: boolean;
+  /** Media type to request instead of `application/json`; the response is still parsed as JSON. */
+  accept?: string;
 }
 
 export interface TidewaysHttpOptions {
@@ -38,7 +41,10 @@ export function apiPath(...segments: string[]): string {
 
 function buildQuery(query: Record<string, QueryValue> | undefined): string {
   const pairs = Object.entries(query ?? {}).flatMap(([key, value]) =>
-    value === undefined ? [] : [`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`]
+    (value === undefined ? [] : Array.isArray(value) ? value : [value]).map(
+      (item: string | number | boolean) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(String(item))}`
+    )
   );
   return pairs.length === 0 ? '' : `?${pairs.join('&')}`;
 }
@@ -102,7 +108,7 @@ export class TidewaysHttp {
         response = await this.fetchImpl(url, {
           headers: {
             Authorization: `Bearer ${this.options.token}`,
-            Accept: 'application/json',
+            Accept: options.accept ?? 'application/json',
             'User-Agent': this.options.userAgent,
           },
           signal: AbortSignal.timeout(this.options.timeoutMs),

@@ -34,6 +34,7 @@ describe('tideways_get_performance', () => {
     });
     expect(data.transactions).toEqual([
       {
+        id: 101,
         name: 'App\\Controller\\CartController::show',
         requests: 4700,
         averageMs: 289,
@@ -143,13 +144,15 @@ describe('tideways_get_performance', () => {
     expect(textOf(result)).toContain('"metrics" scope');
   });
 
-  it('reads transactions without a name and rounds percentages and memory', async () => {
+  it('reads transactions without a name or ID and rounds percentages and memory', async () => {
     const [first] = performance.application.by_transactions;
     const body = {
       application: {
         ...performance.application,
         total: { ...performance.application.total, error_rate: 0.01859900693499037 },
-        by_transactions: [{ ...first, name: null, memory: 475998.7, impact: 18.123456789 }],
+        by_transactions: [
+          { ...first, id: undefined, name: null, memory: 475998.7, impact: 18.123456789 },
+        ],
       },
     };
     server = await startTestServer({ '/acme/shop/performance': { body } });
@@ -158,6 +161,7 @@ describe('tideways_get_performance', () => {
     const data = result.structuredContent as PerformanceOutput;
     expect(data.totals.errorRatePercent).toBe(0.0186);
     expect(data.transactions[0]).toMatchObject({
+      id: null,
       name: '(unnamed)',
       memory: 475999,
       impactPercent: 18.1235,

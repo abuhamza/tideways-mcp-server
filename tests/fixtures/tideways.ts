@@ -1,5 +1,5 @@
-// Synthetic Tideways API payloads. Shapes mirror the live API (verified 2026-09-30);
-// every name, host and value is made up.
+// Synthetic Tideways API payloads. Shapes mirror the live API (verified 2026-09-30; issues v2
+// on 2026-10-04); every name, host and value is made up.
 
 export const tokenInfo = {
   scopes: ['metrics', 'traces', 'errors'],
@@ -89,59 +89,47 @@ export function summary(from: string, to: string, pending = 2, environment = 'pr
   };
 }
 
+/** Issue list item of the issues v2 media type. */
 export function issue(overrides: Record<string, unknown> = {}) {
   return {
-    tidewaysContext: {
-      'http.host': 'shop.example.test',
-      'http.method': 'GET',
-      'http.url': 'https://shop.example.test/cart?session=secret',
-      'server.host': 'web-1.example.test',
-    },
-    exceptionType: 'PDOException',
-    firstOccurred: '2026-09-01 19:13:19',
-    lastOccurred: '2026-09-30 12:43:50',
     id: '1234-5_0123456789abcdef',
-    lastMessage: 'SQLSTATE[HY000]: example failure',
-    lastStackTrace: [
-      {
-        file: 'src/Service/Cart.php',
-        line: 649,
-        function: 'App\\Service\\Cart::load',
-        previousException: null,
-      },
-      {
-        file: 'src/Controller/CartController.php',
-        line: 42,
-        function: 'App\\Controller\\CartController::show',
-        previousException: null,
-      },
-    ],
+    issueType: 'error',
+    exceptionType: 'PDOException',
+    type: 'PDOException',
+    message: 'SQLSTATE[HY000]: example failure',
+    source: 'src/Service/Cart.php:649',
     occurrences: 17000,
     occurrencesSinceLastRelease: 2147,
-    source: 'src/Service/Cart.php:649',
+    firstOccurred: '2026-09-01 19:13:19',
+    lastOccurred: '2026-09-30 12:43:50',
     status: 'open',
-    transactions: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
     environments: ['production'],
-    type: 'PDOException',
     services: ['web', 'worker'],
-    issueType: 'error',
+    annotations: {
+      'http.method': 'GET',
+      'http.url': 'https://shop.example.test/cart?session=secret',
+    },
     ...overrides,
   };
 }
 
-export function issues(count: number, criteria: Record<string, unknown> = {}) {
+/** Issues v2 page; `criteria` and `pagination` override the defaults (default service "web"). */
+export function issues(
+  count: number,
+  criteria: Record<string, unknown> = {},
+  pagination: Record<string, unknown> = {}
+) {
   return {
     issues: Array.from({ length: count }, (_, i) => issue({ id: `issue-${i + 1}` })),
     criteria: {
-      organization: 'acme',
-      application: 'shop',
       environment: 'production',
       service: 'web',
-      range: { startDate: '2026-09-30 11:44:41', endDate: '2026-09-30 12:44:40', minutes: 60 },
-      page: 1,
       status: 'open',
+      level: null,
+      transactionName: null,
       ...criteria,
     },
+    pagination: { page: 1, totalPages: count > 0 ? 1 : 0, totalItems: count, ...pagination },
   };
 }
 

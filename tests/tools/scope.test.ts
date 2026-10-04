@@ -107,7 +107,7 @@ describe('scope checks: Tideways answering for another environment or service', 
     expect(textOf(result)).toMatch(SERVICE_ERROR);
   });
 
-  it('tideways_list_issues checks the environment only', async () => {
+  it('tideways_list_issues checks the environment', async () => {
     server = await startTestServer({ '/acme/shop/issues': { body: issues(1) } });
     const result = await callTool(server, 'tideways_list_issues', { environment: 'qa' });
     expect(result.isError).toBe(true);
@@ -117,13 +117,15 @@ describe('scope checks: Tideways answering for another environment or service', 
     expect(ok.isError).toBeUndefined();
   });
 
-  it('tideways_list_issues ignores a configured default service', async () => {
+  it('tideways_list_issues throws when a configured default service is unknown', async () => {
     server = await startTestServer(
       { '/acme/shop/issues': { body: issues(1) } },
-      { TIDEWAYS_SERVICE: 'worker' }
+      { TIDEWAYS_SERVICE: 'voucher-api' }
     );
     const result = await callTool(server, 'tideways_list_issues');
-    expect(result.isError).toBeUndefined();
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain('no service "voucher-api" (the configured default;');
+    expect(textOf(result)).toContain('default service "web"');
   });
 
   it('tideways_search_traces compares each trace with what was asked', async () => {
