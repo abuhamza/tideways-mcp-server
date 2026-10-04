@@ -39,6 +39,7 @@ const performanceResponse = z.object({
     by_transactions: z
       .array(
         z.object({
+          id: z.number().nullish(),
           name: text,
           requests: num,
           response_time_average: num,
@@ -101,6 +102,10 @@ export const performanceOutput = z.object({
   transactions: z
     .array(
       z.object({
+        id: z
+          .number()
+          .nullable()
+          .describe('Transaction ID: pass it in "transactionIds" of tideways_list_issues'),
         name: z.string(),
         requests: z.number(),
         averageMs: z.number(),
@@ -170,6 +175,7 @@ export function registerPerformanceTool(server: McpServer, ctx: ToolContext): vo
           ),
         },
         transactions: app.by_transactions.map(t => ({
+          id: t.id ?? null,
           name: t.name ?? UNNAMED,
           requests: t.requests,
           averageMs: t.response_time_average,

@@ -65,6 +65,8 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     const instructions = server.client.getInstructions() ?? '';
     expect(instructions).toContain('default service');
     expect(instructions).toContain('cannot switch service');
+    expect(instructions).toContain('tideways_list_issues: all services');
+    expect(instructions).toContain('PHP warnings and notices');
     expect(instructions).toContain('production only');
     expect(instructions).toContain('an unknown environment or service fails with an error');
     expect(instructions).toContain('tideways_list_services with "search"');
@@ -146,15 +148,24 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     expect(nested('tideways_get_history', ['transactions', '[]', 'memoryMax'])).toContain('KB');
 
     const issues = byName.get('tideways_list_issues')?.description ?? '';
-    expect(issues).toContain('default service');
+    expect(issues).toContain('Reads all services');
     expect(issues).toContain('There is no time filter');
     expect(nested('tideways_list_issues', ['issues', '[]', 'occurrences'])).toContain(
       'not limited to any period'
     );
     expect(nested('tideways_list_issues', ['issues', '[]', 'transactions'])).toContain(
-      'transactionCount'
+      '"transactionIds"'
+    );
+    expect(prop('tideways_list_issues', 'inputSchema', 'transactionIds')).toContain(
+      'tideways_get_performance'
+    );
+    expect(nested('tideways_get_performance', ['transactions', '[]', 'id'])).toContain(
+      'transactionIds'
     );
     expect(prop('tideways_list_issues', 'inputSchema', 'status')).toContain('triaged');
+    expect(prop('tideways_list_issues', 'inputSchema', 'status')).toContain(
+      'all = open and ignored'
+    );
     expect(prop('tideways_list_issues', 'inputSchema', 'status')).toContain(
       '"new" currently returns the same list as "open"'
     );
@@ -245,7 +256,7 @@ describe('strict inputs', () => {
 
   it.each([
     ['tideways_list_projects', 'service'],
-    ['tideways_list_issues', 'service'],
+    ['tideways_list_issues', 'bogus'],
     ['tideways_list_services', 'service'],
     ['tideways_get_history', 'environment'],
     ['tideways_get_performance', 'bogus'],

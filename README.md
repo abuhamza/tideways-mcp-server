@@ -108,7 +108,7 @@ claude mcp add tideways -e TIDEWAYS_TOKEN=your-token -- docker run -i --rm -e TI
 | `tideways_list_services` | Which services does a project have, and which of them serve "voucher"? |
 | `tideways_get_performance` | How is the app doing in any window of up to 24 h within the last ~30 days? Totals, layers, top transactions |
 | `tideways_get_performance_summary` | Requests, errors and p95 in 15-minute buckets over up to 30 days |
-| `tideways_list_issues` | Which errors, slow SQL queries or deprecations are open, resolved or ignored? |
+| `tideways_list_issues` | Which errors, slow SQL queries, deprecations, warnings or notices are open, resolved or ignored, in any service or transaction? |
 | `tideways_search_traces` | Which individual requests were slow, and where did the time go? |
 | `tideways_get_history` | Day, week or month report for a past date |
 | `tideways_get_observations` | Configuration problems and code bottlenecks Tideways detected (e.g. N+1 queries) |
@@ -133,7 +133,7 @@ Environment variables; empty values count as unset. The server does not load `.e
 ## Good to know
 
 - All times are UTC, `YYYY-MM-DD HH:mm`. The API rate limit is per Tideways organization and clock hour; its size depends on the plan, and all tokens and projects of the organization share it.
-- Tools read the project's default service unless you name one. The API cannot list services; `tideways_list_services` finds them through open issues, and its `search` costs one request per service.
+- Tools read the project's default service unless you name one; `tideways_list_issues` reads all services. The API cannot list services; `tideways_list_services` finds them through open issues, and its `search` costs one request per service.
 - Limits of the Tideways API: at most 30 traces per search, history for production and the default service only, issues 10 per page, and no trace filter by bottleneck (an N+1 observation's link opens the affected traces in Tideways).
 
 ## Security
