@@ -11,12 +11,15 @@ import { registerGetObservationsTool } from './tools/observations.js';
 import { registerPerformanceSummaryTool } from './tools/performance-summary.js';
 import { registerPerformanceTool } from './tools/performance.js';
 import { registerSearchTracesTool } from './tools/traces.js';
+import { registerGetTransactionTool } from './tools/transaction.js';
 
 export const SERVER_INSTRUCTIONS = [
   'Read-only access to Tideways, a performance monitoring service for PHP applications.',
   'All times are UTC in "YYYY-MM-DD HH:mm". Every tool except tideways_list_projects accepts an optional',
   '"project"; call tideways_list_projects when unsure which projects exist or after a scope/project error.',
   'Pick the tool by question: current health and top transactions -> tideways_get_performance;',
+  'when one transaction got slow and in which layer -> tideways_get_transaction with its ID from',
+  'tideways_get_performance;',
   '15-minute trends over up to 30 days -> tideways_get_performance_summary; a past window up to',
   '24 h (e.g. yesterday 14:00-16:00) -> tideways_get_performance with "end"; past day/week/month',
   'reports -> tideways_get_history; errors, slow SQL, deprecations, PHP warnings and notices ->',
@@ -50,6 +53,7 @@ export function createServer(ctx: ToolContext): McpServer {
   registerListProjectsTool(server, ctx);
   registerListServicesTool(server, ctx);
   registerPerformanceTool(server, ctx);
+  registerGetTransactionTool(server, ctx);
   registerPerformanceSummaryTool(server, ctx);
   registerListIssuesTool(server, ctx);
   registerGetIssueTool(server, ctx);

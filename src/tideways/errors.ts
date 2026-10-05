@@ -26,7 +26,9 @@ export class TidewaysApiError extends Error {
     readonly kind: TidewaysErrorKind,
     message: string,
     readonly status?: number,
-    readonly resetAt?: Date
+    readonly resetAt?: Date,
+    /** Message from the error body, when Tideways sent one. */
+    readonly apiMessage?: string
   ) {
     super(message);
   }
@@ -90,7 +92,9 @@ export function errorForStatus(
       'not_found',
       `Tideways found nothing for ${resource} (HTTP 404${detail}). ` +
         'Check the organization and project with tideways_list_projects.',
-      status
+      status,
+      undefined,
+      apiMessage
     );
   }
   if (status === 429) {

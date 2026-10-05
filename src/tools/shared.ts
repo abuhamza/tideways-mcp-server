@@ -81,6 +81,22 @@ export const criteriaOutput = z
   })
   .describe('What Tideways actually queried. Times are UTC "YYYY-MM-DD HH:mm".');
 
+export const layerAveragesOutput = z
+  .record(z.string(), z.number())
+  .describe(
+    'Average ms per request in each layer: sql, http, cache, al = autoloading, ct = compiling, ' +
+      'io = file I/O, dns, runq = waiting for CPU, sleep, shell'
+  );
+
+/** Flatten Tideways' `downstream` map ({sql: {average}}) to average ms per layer. */
+export function layerAverages(
+  downstream: Record<string, { average: number }>
+): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(downstream).map(([layer, { average }]) => [layer, average])
+  );
+}
+
 export interface ApiCriteria {
   start?: string | null | undefined;
   end?: string | null | undefined;

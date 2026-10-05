@@ -14,6 +14,7 @@ const TOOL_NAMES = [
   'tideways_list_projects',
   'tideways_list_services',
   'tideways_get_performance',
+  'tideways_get_transaction',
   'tideways_get_performance_summary',
   'tideways_list_issues',
   'tideways_get_issue',

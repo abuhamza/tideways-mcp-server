@@ -14,6 +14,8 @@ import {
   environmentParam,
   jsonResult,
   LARGE_RESULT_META,
+  layerAverages,
+  layerAveragesOutput,
   projectParam,
   rawOutput,
   READ_ONLY_ANNOTATIONS,
@@ -92,12 +94,7 @@ export const performanceOutput = z.object({
     p95Ms: z.number(),
     averageMs: z.number(),
     medianMs: z.number(),
-    downstreamAverageMs: z
-      .record(z.string(), z.number())
-      .describe(
-        'Average ms per request in each layer: sql, http, cache, al = autoloading, ct = compiling, ' +
-          'io = file I/O, dns, runq = waiting for CPU, sleep, shell'
-      ),
+    downstreamAverageMs: layerAveragesOutput,
   }),
   transactions: z
     .array(
@@ -106,8 +103,8 @@ export const performanceOutput = z.object({
           .number()
           .nullable()
           .describe(
-            'Transaction ID: pass it in "transactionIds" of tideways_list_issues or ' +
-              'tideways_search_traces'
+            'Transaction ID: pass it as "transactionId" of tideways_get_transaction or in ' +
+              '"transactionIds" of tideways_list_issues or tideways_search_traces'
           ),
         name: z.string(),
         requests: z.number(),
@@ -173,9 +170,7 @@ export function registerPerformanceTool(server: McpServer, ctx: ToolContext): vo
           p95Ms: total?.response_time ?? 0,
           averageMs: total?.average ?? 0,
           medianMs: total?.median ?? 0,
-          downstreamAverageMs: Object.fromEntries(
-            Object.entries(total?.downstream ?? {}).map(([layer, { average }]) => [layer, average])
-          ),
+          downstreamAverageMs: layerAverages(total?.downstream ?? {}),
         },
         transactions: app.by_transactions.map(t => ({
           id: t.id ?? null,
