@@ -129,7 +129,9 @@ export const getTransactionOutput = z.object({
               value: z.number().nullable(),
             })
           )
-          .describe('Reference points Tideways draws on the histogram, each named and labelled'),
+          .describe(
+            'Response-time statistics marked on the histogram: 50%, Average, 90%, 95%, 99%, 99.9%, Max'
+          ),
       })
       .nullable()
       .describe('Response-time distribution of the window; null when Tideways sends none'),

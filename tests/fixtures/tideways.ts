@@ -218,8 +218,10 @@ export function transaction(id = 101, bucketMinutes = 1, end = '2026-09-30 12:44
             { start_from_ms: 500, end_to_ms: 1000, requests: 50 },
           ],
           markers: [
-            { name: 'median', label: 'Median', value: 205 },
-            { name: 'p95', label: '95%', value: 850 },
+            { name: '50%', label: '50%', value: 205 },
+            { name: 'Average', label: 'Average', value: 285 },
+            { name: '95%', label: '95%', value: 850 },
+            { name: 'Max', label: 'Max', value: 1000 },
           ],
           total: 220,
         },

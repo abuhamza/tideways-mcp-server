@@ -42,8 +42,10 @@ describe('tideways_get_transaction', () => {
             { fromMs: 500, toMs: 1000, requests: 50 },
           ],
           markers: [
-            { name: 'median', label: 'Median', value: 205 },
-            { name: 'p95', label: '95%', value: 850 },
+            { name: '50%', label: '50%', value: 205 },
+            { name: 'Average', label: 'Average', value: 285 },
+            { name: '95%', label: '95%', value: 850 },
+            { name: 'Max', label: 'Max', value: 1000 },
           ],
         },
       },
