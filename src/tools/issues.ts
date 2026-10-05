@@ -23,12 +23,12 @@ import {
   rawOutput,
   READ_ONLY_ANNOTATIONS,
   serviceParam,
+  transactionIdsParam,
   truncate,
 } from './shared.js';
 
 export const ISSUE_STATUSES = ['open', 'all', 'new', 'resolved', 'not_error', 'ignored'] as const;
 const MAX_MESSAGE_LENGTH = 500;
-const MAX_TRANSACTION_IDS = 20;
 
 export const listIssuesInput = z.strictObject({
   project: projectParam,
@@ -51,10 +51,7 @@ export const listIssuesInput = z.strictObject({
       'open (default) = unresolved; all = open and ignored together; resolved, ignored and ' +
         'not_error are triaged states; "new" currently returns the same list as "open".'
     ),
-  transactionIds: z
-    .array(z.number().int().positive())
-    .min(1)
-    .max(MAX_TRANSACTION_IDS)
+  transactionIds: transactionIdsParam
     .optional()
     .describe(
       'Only issues raised in these transactions: numeric IDs from transactions[].id of ' +

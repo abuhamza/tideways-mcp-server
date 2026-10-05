@@ -14,7 +14,7 @@ import {
   READ_ONLY_ANNOTATIONS,
   sameName,
 } from './shared.js';
-import { stripQuery, TRACE_LIMIT, tracesResponse } from './traces.js';
+import { DEFAULT_TRACE_LIMIT, stripQuery, tracesResponse } from './traces.js';
 
 /** Issue types whose first open page names services. */
 const SERVICE_ISSUE_TYPES = ['error', 'slowsql', 'deprecated'] as const;
@@ -74,8 +74,9 @@ export const listServicesOutput = z.object({
           .nullable()
           .optional()
           .describe(
-            `With "search": traces matching the word, up to ${TRACE_LIMIT} (${TRACE_LIMIT} means at ` +
-              `least ${TRACE_LIMIT}); null when the service was not searched or its search failed`
+            `With "search": traces matching the word, up to ${DEFAULT_TRACE_LIMIT} ` +
+              `(${DEFAULT_TRACE_LIMIT} means at least ${DEFAULT_TRACE_LIMIT}); null when the ` +
+              'service was not searched or its search failed'
           ),
         example: z
           .object({

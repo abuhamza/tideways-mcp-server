@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { stripQuery, TRACE_LIMIT, type SearchTracesOutput } from '../../src/tools/traces.js';
+import {
+  DEFAULT_TRACE_LIMIT,
+  stripQuery,
+  type SearchTracesOutput,
+} from '../../src/tools/traces.js';
 import { trace } from '../fixtures/tideways.js';
 import { callTool, startTestServer, textOf, type TestServer } from '../helpers/harness.js';
 
@@ -21,7 +25,7 @@ describe('tideways_search_traces', () => {
   it('returns concise traces with the slowest layers and no query strings', async () => {
     server = await startTestServer({ '/acme/shop/traces': { body: { traces: [trace()] } } });
     const result = await callTool(server, 'tideways_search_traces');
-    expect(server.api.requests[0]?.url.search).toBe('');
+    expect(server.api.requests[0]?.url.search).toBe('?limit=30');
     const data = result.structuredContent as SearchTracesOutput;
     expect(data).toMatchObject({ project: 'acme/shop', count: 1, limitReached: false });
     expect(data.traces[0]).toEqual({
@@ -76,8 +80,13 @@ describe('tideways_search_traces', () => {
       maxResponseTimeMs: 5000,
       withCallgraph: true,
       sortBy: 'response_time',
+      limit: 100,
+      transactionIds: [101, 202],
     });
-    expect(Object.fromEntries(server.api.requests[0]?.url.searchParams ?? [])).toEqual({
+    const params = new URLSearchParams(server.api.requests[0]?.url.searchParams);
+    expect(params.getAll('opId[]')).toEqual(['101', '202']);
+    params.delete('opId[]');
+    expect(Object.fromEntries(params)).toEqual({
       env: 'staging',
       s: 'worker',
       search: 'checkout',
@@ -87,7 +96,45 @@ describe('tideways_search_traces', () => {
       max_response_time_ms: '5000',
       has_callgraph: 'true',
       sort_by: 'response_time',
+      limit: '100',
     });
+  });
+
+  it('flags limitReached when as many traces came back as were asked for', async () => {
+    const traces = (n: number) =>
+      Array.from({ length: n }, (_, i) => trace({ id: `t${i}`, transaction_name: `T${i}` }));
+    server = await startTestServer({
+      '/acme/shop/traces': url => ({
+        body: { traces: traces(url.searchParams.get('limit') === '5' ? 5 : 30) },
+      }),
+    });
+    const five = (await callTool(server, 'tideways_search_traces', { limit: 5 }))
+      .structuredContent as SearchTracesOutput;
+    expect(five).toMatchObject({ count: 5, limitReached: true });
+    const thirtyOfHundred = (await callTool(server, 'tideways_search_traces', { limit: 100 }))
+      .structuredContent as SearchTracesOutput;
+    expect(thirtyOfHundred).toMatchObject({ count: 30, limitReached: false });
+    expect(server.api.requests.map(r => r.url.searchParams.get('limit'))).toEqual(['5', '100']);
+  });
+
+  it('rejects a limit outside 1 to 100 and malformed transaction IDs', async () => {
+    server = await startTestServer({ '/acme/shop/traces': { body: { traces: [] } } });
+    for (const args of [
+      { limit: 0 },
+      { limit: 101 },
+      { limit: 2.5 },
+      { transactionIds: [] },
+      { transactionIds: [1.5] },
+      { transactionIds: [0] },
+      { transactionIds: ['checkout'] },
+      { transactionIds: Array.from({ length: 21 }, (_, i) => i + 1) },
+    ]) {
+      expect(
+        (await callTool(server, 'tideways_search_traces', args)).isError,
+        JSON.stringify(args)
+      ).toBe(true);
+    }
+    expect(server.api.requests).toHaveLength(0);
   });
 
   it('never sends has_callgraph=false', async () => {
@@ -96,8 +143,8 @@ describe('tideways_search_traces', () => {
     expect(server.api.requests[0]?.url.searchParams.has('has_callgraph')).toBe(false);
   });
 
-  it('flags when the API limit of 30 traces was hit', async () => {
-    const traces = Array.from({ length: TRACE_LIMIT }, (_, i) =>
+  it('flags limitReached when the default 30 traces came back', async () => {
+    const traces = Array.from({ length: DEFAULT_TRACE_LIMIT }, (_, i) =>
       trace({ id: `t${i}`, http: null, _links: null, layers: [] })
     );
     server = await startTestServer({ '/acme/shop/traces': { body: { traces } } });

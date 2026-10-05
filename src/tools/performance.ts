@@ -105,7 +105,10 @@ export const performanceOutput = z.object({
         id: z
           .number()
           .nullable()
-          .describe('Transaction ID: pass it in "transactionIds" of tideways_list_issues'),
+          .describe(
+            'Transaction ID: pass it in "transactionIds" of tideways_list_issues or ' +
+              'tideways_search_traces'
+          ),
         name: z.string(),
         requests: z.number(),
         averageMs: z.number(),
