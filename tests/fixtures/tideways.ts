@@ -133,6 +133,57 @@ export function issues(
   };
 }
 
+/** Stack frame of an issue's latest occurrence. */
+export function stackFrame(index: number) {
+  return {
+    file: `src/Service/Cart${index}.php`,
+    line: 100 + index,
+    function: `App\\Service\\Cart${index}::load`,
+    previousException: false,
+  };
+}
+
+/** One issue of the issues v2 media type, as `/issues/{id}` returns it; overrides apply to `issue`. */
+export function issueDetail(overrides: Record<string, unknown> = {}) {
+  return {
+    issue: {
+      ...issue({ id: 'issue-1' }),
+      lastReopened: '2026-09-20 08:15:00',
+      transactions: [
+        { name: 'App\\Controller\\CartController::show', count: 1200 },
+        { name: 'App\\Controller\\CheckoutController::pay', count: 35 },
+      ],
+      occurrenceDistribution: {
+        retentionDays: 30,
+        totalOccurrences: 17000,
+        buckets: [
+          { start: '2026-09-30 10:00:00', end: '2026-09-30 11:00:00', count: 4 },
+          { start: '2026-09-30 11:00:00', end: '2026-09-30 12:00:00', count: 0 },
+        ],
+      },
+      latestOccurrence: {
+        time: '2026-09-30 12:43:50',
+        message: 'SQLSTATE[HY000]: example failure',
+        type: 'PDOException',
+        code: 'HY000',
+        service: 'web',
+        environment: 'production',
+        transaction: 'App\\Controller\\CartController::show',
+        stackTrace: [stackFrame(1), stackFrame(2)],
+        annotations: {
+          correlationId: 'c0ffee00-0000-4000-8000-000000000001',
+          'http.host': 'shop.example.test',
+          'http.method': 'GET',
+          'http.status': 500,
+          'http.url': 'https://shop.example.test/cart?session=secret',
+          'server.host': 'web-1.example.test',
+        },
+      },
+      ...overrides,
+    },
+  };
+}
+
 /** Issues page whose items name the given services, one array per issue. */
 export function issuesNaming(services: string[][], criteria: Record<string, unknown> = {}) {
   return {

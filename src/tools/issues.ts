@@ -10,6 +10,8 @@ import {
   issuesV2Response,
   issueTypeQuery,
   slowSqlDurationMs,
+  type IssueType,
+  type IssueV2,
 } from '../tideways/issues.js';
 import { parseResponse } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
@@ -73,7 +75,7 @@ export const listIssuesOutput = z.object({
   issues: z.array(
     z.object({
       id: z.string(),
-      type: z.string(),
+      type: z.string().describe('The requested type; tideways_get_issue takes it with the id'),
       title: z.string().describe('Exception class, or the tables of a slow SQL query'),
       message: z.string().nullable().describe('Last message or SQL, truncated to 500 characters'),
       source: z.string().nullable(),
@@ -97,18 +99,20 @@ export const listIssuesOutput = z.object({
       transactionCount: z
         .number()
         .nullable()
-        .describe('Always null: the list does not carry affected transactions'),
+        .describe('Always null: tideways_get_issue returns the affected transactions'),
       transactions: z
         .array(z.string())
         .nullable()
         .describe(
-          'Always null: the list does not carry affected transactions; filter by transaction ' +
-            'with "transactionIds"'
+          'Always null: tideways_get_issue returns the affected transactions with counts; ' +
+            'filter the list by transaction with "transactionIds"'
         ),
       topFrame: z
         .string()
         .nullable()
-        .describe('Always null: the list carries no stack trace; source names the file and line'),
+        .describe(
+          'Always null: tideways_get_issue returns the stack trace; source names the file and line'
+        ),
     })
   ),
   hasMore: z.boolean().describe('True when later pages exist; request the next page for more'),
@@ -118,6 +122,25 @@ export const listIssuesOutput = z.object({
 });
 
 export type ListIssuesOutput = z.infer<typeof listIssuesOutput>;
+
+/** Fields that tideways_list_issues and tideways_get_issue both return for an issue. */
+export function issueSummary(issue: IssueV2, type: IssueType, maxMessageLength: number) {
+  return {
+    id: issue.id,
+    type,
+    title: issue.type ?? issue.exceptionType ?? 'Unknown',
+    message: issue.message === null ? null : truncate(issue.message, maxMessageLength),
+    source: issue.source,
+    status: issue.status,
+    occurrences: issue.occurrences,
+    occurrencesSinceLastRelease: issue.occurrencesSinceLastRelease ?? null,
+    firstOccurred: issue.firstOccurred,
+    lastOccurred: issue.lastOccurred,
+    environments: issue.environments,
+    services: issue.services,
+    durationMs: type === 'slowsql' ? slowSqlDurationMs(issue) : null,
+  };
+}
 
 export function registerListIssuesTool(server: McpServer, ctx: ToolContext): void {
   server.registerTool(
@@ -166,20 +189,8 @@ export function registerListIssuesTool(server: McpServer, ctx: ToolContext): voi
           page: currentPage,
         },
         issues: parsed.issues.map(issue => ({
-          id: issue.id,
-          type: issue.issueType ?? type,
-          title: issue.type ?? issue.exceptionType ?? 'Unknown',
-          message: issue.message === null ? null : truncate(issue.message, MAX_MESSAGE_LENGTH),
-          source: issue.source,
+          ...issueSummary(issue, type, MAX_MESSAGE_LENGTH),
           originatingFunction: null,
-          status: issue.status,
-          occurrences: issue.occurrences,
-          occurrencesSinceLastRelease: issue.occurrencesSinceLastRelease ?? null,
-          firstOccurred: issue.firstOccurred,
-          lastOccurred: issue.lastOccurred,
-          environments: issue.environments,
-          services: issue.services,
-          durationMs: type === 'slowsql' ? slowSqlDurationMs(issue) : null,
           transactionCount: null,
           transactions: null,
           topFrame: null,

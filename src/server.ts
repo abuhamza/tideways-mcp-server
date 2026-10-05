@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 
 import pkg from '../package.json' with { type: 'json' };
 import type { ToolContext } from './context.js';
+import { registerGetIssueTool } from './tools/get-issue.js';
 import { registerGetHistoryTool } from './tools/history.js';
 import { registerListIssuesTool } from './tools/issues.js';
 import { registerListProjectsTool } from './tools/list-projects.js';
@@ -25,6 +26,8 @@ export const SERVER_INSTRUCTIONS = [
   'code findings -> tideways_get_observations; an app, API or worker that is not a project, or a',
   'transaction that tideways_search_traces does not find in the default service ->',
   'tideways_list_services with "search" set to one word of it.',
+  "An issue's stack trace, affected transactions and occurrence history -> tideways_get_issue with",
+  'the id and type from tideways_list_issues.',
   'Without "service", tools read the project\'s default service (tideways_list_issues: all services);',
   'a project often has more (APIs, workers, CLI), which tideways_list_services lists.',
   'tideways_get_history cannot switch service and covers production only.',
@@ -49,6 +52,7 @@ export function createServer(ctx: ToolContext): McpServer {
   registerPerformanceTool(server, ctx);
   registerPerformanceSummaryTool(server, ctx);
   registerListIssuesTool(server, ctx);
+  registerGetIssueTool(server, ctx);
   registerSearchTracesTool(server, ctx);
   registerGetHistoryTool(server, ctx);
   registerGetObservationsTool(server, ctx);
