@@ -5,7 +5,7 @@
   "display_name": "Tideways",
   "version": "2.0.0",
   "description": "Query Tideways PHP performance monitoring data (performance, issues, traces, history) from your AI assistant.",
-  "long_description": "Read-only MCP server for [Tideways](https://tideways.com/). Eight tools cover the token's projects and services, per-minute performance and top transactions, 15-minute summaries over 30 days, error, slow-SQL, deprecation, warning and notice issues, individual traces, day/week/month reports and automatic configuration and bottleneck observations.",
+  "long_description": "Read-only MCP server for [Tideways](https://tideways.com/). Its tools cover the token's projects and services, per-minute performance and top transactions, the timeline of one transaction, 15-minute summaries over 30 days, error, slow-SQL, deprecation, warning and notice issues, individual traces, day/week/month reports and automatic configuration and bottleneck observations.",
   "author": {
     "name": "Mouhammed Diop",
     "url": "https://github.com/abuhamza"
@@ -59,6 +59,10 @@
     {
       "name": "tideways_get_performance",
       "description": "Per-minute performance and top transactions for any window of up to 24 h within the last ~30 days"
+    },
+    {
+      "name": "tideways_get_transaction",
+      "description": "Per-minute timeline, layers and response-time histogram of one transaction"
     },
     {
       "name": "tideways_get_performance_summary",

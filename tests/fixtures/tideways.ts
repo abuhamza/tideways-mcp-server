@@ -170,6 +170,72 @@ export function trace(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** Report of one transaction; the timeline is two buckets of `bucketMinutes` before `end`. */
+export function transaction(id = 101, bucketMinutes = 1, end = '2026-09-30 12:44') {
+  const endMs = new Date(`${end.replace(' ', 'T')}:00Z`).getTime();
+  const key = (bucketsBack: number) =>
+    new Date(endMs - bucketsBack * bucketMinutes * 60_000)
+      .toISOString()
+      .slice(0, 16)
+      .replace('T', ' ');
+  return {
+    transaction: {
+      id,
+      name: 'App\\Controller\\CartController::show',
+      identifier: 'cart-show',
+      by_time: {
+        [key(1)]: {
+          requests: 120,
+          errors: 1,
+          responseTimeTargetExceeded: 4,
+          percentile_95p: 900,
+          average: 290,
+          median: 210,
+          downstream: { sql: { average: 120.5 }, http: { average: 40.25 }, al: { average: 3 } },
+          page_cache: [],
+        },
+        [key(2)]: {
+          requests: 100,
+          errors: 0,
+          responseTimeTargetExceeded: 2,
+          percentile_95p: 800,
+          average: 280,
+          median: 200,
+          downstream: { sql: { average: 110 } },
+          page_cache: [],
+        },
+      },
+      total: {
+        error_rate: 0.4545,
+        requests: 220,
+        response_time: 850,
+        average: 285,
+        median: 205,
+        histogram: {
+          buckets: [
+            { start_from_ms: 0, end_to_ms: 100, requests: 20 },
+            { start_from_ms: 100, end_to_ms: 500, requests: 150 },
+            { start_from_ms: 500, end_to_ms: 1000, requests: 50 },
+          ],
+          markers: [
+            { name: 'median', label: 'Median', value: 205 },
+            { name: 'p95', label: '95%', value: 850 },
+          ],
+          total: 220,
+        },
+        downstream: { sql: { average: 115 }, http: { average: 22 }, al: { average: 3 } },
+        page_cache: { hits: 0, misses: 0 },
+      },
+      criteria: {
+        start: key(2),
+        end,
+        service: 'web',
+        environment: 'production',
+      },
+    },
+  };
+}
+
 export function history(granularity: 'day' | 'week' | 'month' = 'day') {
   const byTime: Record<string, { requests: number; errors: number; percentile_95p: number }> = {
     '2026-09-28 22:00': { requests: 3600, errors: 9, percentile_95p: 330 },

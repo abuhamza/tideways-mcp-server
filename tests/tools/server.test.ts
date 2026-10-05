@@ -14,6 +14,7 @@ const TOOL_NAMES = [
   'tideways_list_projects',
   'tideways_list_services',
   'tideways_get_performance',
+  'tideways_get_transaction',
   'tideways_get_performance_summary',
   'tideways_list_issues',
   'tideways_search_traces',
@@ -43,7 +44,7 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     expect(server.client.getServerCapabilities()).toEqual({ tools: { listChanged: false } });
   });
 
-  it('lists exactly the eight read-only tools with output schemas', async () => {
+  it('lists exactly the read-only tools with output schemas', async () => {
     server = await startTestServer({});
     const { tools } = await server.client.listTools();
     expect(tools.map(t => t.name)).toEqual(TOOL_NAMES);

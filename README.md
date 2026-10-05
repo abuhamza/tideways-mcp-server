@@ -107,6 +107,7 @@ claude mcp add tideways -e TIDEWAYS_TOKEN=your-token -- docker run -i --rm -e TI
 | `tideways_list_projects` | Which projects and scopes does my token have, and how much of the hourly rate limit is left? |
 | `tideways_list_services` | Which services does a project have, and which of them serve "voucher"? |
 | `tideways_get_performance` | How is the app doing in any window of up to 24 h within the last ~30 days? Totals, layers, top transactions |
+| `tideways_get_transaction` | When did one transaction get slow, and in which layer? Per-minute timeline and response-time histogram |
 | `tideways_get_performance_summary` | Requests, errors and p95 in 15-minute buckets over up to 30 days |
 | `tideways_list_issues` | Which errors, slow SQL queries, deprecations, warnings or notices are open, resolved or ignored, in any service or transaction? |
 | `tideways_search_traces` | Which individual requests were slow, and where did the time go? |
