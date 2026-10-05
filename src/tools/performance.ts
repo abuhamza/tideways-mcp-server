@@ -104,7 +104,7 @@ export const performanceOutput = z.object({
           .nullable()
           .describe(
             'Transaction ID: pass it as "transactionId" of tideways_get_transaction or in ' +
-              '"transactionIds" of tideways_list_issues'
+              '"transactionIds" of tideways_list_issues or tideways_search_traces'
           ),
         name: z.string(),
         requests: z.number(),
