@@ -70,6 +70,10 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     expect(instructions).toContain('production only');
     expect(instructions).toContain('an unknown environment or service fails with an error');
     expect(instructions).toContain('tideways_list_services with "search"');
+    expect(instructions).toContain(
+      'traces of one transaction -> its id from tideways_get_performance, then ' +
+        'tideways_search_traces with "transactionIds"'
+    );
     expect(instructions).toContain('cannot filter traces by bottleneck');
     expect(instructions).toContain('do not infer N+1 queries from slow-SQL issues');
     expect(instructions).not.toContain('several time windows');
@@ -104,6 +108,13 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     expect(describedProperty('tideways_search_traces', 'inputSchema', 'from')).toContain(
       'needs "to"'
     );
+    const transactionIds = describedProperty(
+      'tideways_search_traces',
+      'inputSchema',
+      'transactionIds'
+    );
+    expect(transactionIds).toContain('tideways_get_performance');
+    expect(transactionIds).toContain('from/to window');
     expect(byName.get('tideways_search_traces')?.description).not.toContain('transaction,');
     const traceItem = (
       byName.get('tideways_search_traces')?.outputSchema?.properties as Record<
@@ -161,6 +172,9 @@ describe('MCP server surface (2025 protocol, in-memory)', () => {
     );
     expect(nested('tideways_get_performance', ['transactions', '[]', 'id'])).toContain(
       'transactionIds'
+    );
+    expect(nested('tideways_get_performance', ['transactions', '[]', 'id'])).toContain(
+      'tideways_search_traces'
     );
     expect(prop('tideways_list_issues', 'inputSchema', 'status')).toContain('triaged');
     expect(prop('tideways_list_issues', 'inputSchema', 'status')).toContain(

@@ -19,10 +19,12 @@ import {
   round,
   scopeQuery,
   serviceParam,
+  transactionIdsParam,
 } from './shared.js';
 
-/** The traces endpoint always returns at most this many traces and has no pagination. */
-export const TRACE_LIMIT = 30;
+/** Traces per call when no limit is sent; the traces endpoint has no pagination. */
+export const DEFAULT_TRACE_LIMIT = 30;
+const MAX_TRACE_LIMIT = 100;
 const TOP_LAYERS = 3;
 
 export const tracesResponse = z.object({
@@ -65,6 +67,13 @@ export const searchTracesInput = z.strictObject({
       'One whole word from the transaction name or URL path (e.g. "checkout"), matched against ' +
         'transaction, host and URL tokens. Several words match any of them and widen the result.'
     ),
+  transactionIds: transactionIdsParam
+    .optional()
+    .describe(
+      'Only traces of these transactions: numeric IDs from transactions[].id of ' +
+        'tideways_get_performance. Combines with search, environment, service, sortBy and the ' +
+        'from/to window.'
+    ),
   from: apiMinuteParam
     .optional()
     .describe('Earliest trace time, "YYYY-MM-DD HH:mm" UTC; needs "to" as well'),
@@ -84,6 +93,16 @@ export const searchTracesInput = z.strictObject({
       'response_time = slowest first, memory = highest first; omit for newest first. ' +
         'Without from/to, sorted results span all retained traces (~30 days).'
     ),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_TRACE_LIMIT)
+    .default(DEFAULT_TRACE_LIMIT)
+    .describe(
+      `Traces to return, up to ${MAX_TRACE_LIMIT}. Raise it to cover a busy window or to find ` +
+        'rarer examples, such as traces with an nplus1 bottleneck.'
+    ),
   detail: detailParam,
 });
 
@@ -93,7 +112,8 @@ export const searchTracesOutput = z.object({
   limitReached: z
     .boolean()
     .describe(
-      `True when ${TRACE_LIMIT} traces came back, the API maximum: narrow the time window or change sortBy to see others`
+      'True when as many traces came back as "limit" asked for: raise "limit" (up to ' +
+        `${MAX_TRACE_LIMIT}), narrow the time window or change sortBy to see others`
     ),
   traces: z.array(
     z.object({
@@ -152,9 +172,10 @@ export function registerSearchTracesTool(server: McpServer, ctx: ToolContext): v
     {
       title: 'Search traces',
       description:
-        `Find individual request traces (at most ${TRACE_LIMIT} per call, newest first unless sortBy is set) ` +
-        'with response time, memory, bottlenecks and the slowest layers. Use to investigate specific slow ' +
-        'or failing requests; filter by text, time window and response time.',
+        `Find individual request traces (${DEFAULT_TRACE_LIMIT} per call unless "limit" asks for up to ` +
+        `${MAX_TRACE_LIMIT}; newest first unless sortBy is set) with response time, memory, ` +
+        'bottlenecks and the slowest layers. Use to investigate specific slow or failing requests; ' +
+        'filter by transaction IDs from tideways_get_performance, text, time window and response time.',
       inputSchema: searchTracesInput,
       outputSchema: searchTracesOutput,
       annotations: READ_ONLY_ANNOTATIONS,
@@ -189,6 +210,8 @@ export function registerSearchTracesTool(server: McpServer, ctx: ToolContext): v
           max_response_time_ms: args.maxResponseTimeMs,
           has_callgraph: args.withCallgraph === true ? 'true' : undefined,
           sort_by: args.sortBy,
+          'opId[]': args.transactionIds,
+          limit: args.limit,
         },
         scope: 'traces',
         resource: `traces of ${label}`,
@@ -200,7 +223,7 @@ export function registerSearchTracesTool(server: McpServer, ctx: ToolContext): v
       const output: SearchTracesOutput = {
         project: label,
         count: traces.length,
-        limitReached: traces.length >= TRACE_LIMIT,
+        limitReached: traces.length >= args.limit,
         traces: traces.map(trace => ({
           id: trace.id,
           transaction: trace.transaction_name,

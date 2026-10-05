@@ -56,6 +56,9 @@ export const detailParam = z
       'response under "raw"; it can be very large.'
   );
 
+/** Numeric transaction IDs, as in transactions[].id of tideways_get_performance. */
+export const transactionIdsParam = z.array(z.number().int().positive()).min(1).max(20);
+
 export const apiMinuteParam = z.string().refine(value => parseApiMinute(value) !== undefined, {
   message: 'Use "YYYY-MM-DD HH:mm" in UTC, e.g. "2026-09-30 14:05"',
 });
