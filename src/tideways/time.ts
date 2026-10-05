@@ -24,3 +24,18 @@ export function parseApiDate(value: string): Date | undefined {
     ? date
     : undefined;
 }
+
+const ZONELESS_TIMESTAMP = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
+
+/**
+ * Normalize a timestamp to "YYYY-MM-DD HH:mm" in UTC. Accepts "YYYY-MM-DD HH:mm[:ss]" (UTC),
+ * ISO 8601 with a zone and epoch seconds; other strings come back unchanged.
+ */
+export function toApiMinute(value: string | number | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'string' && ZONELESS_TIMESTAMP.test(value)) {
+    return value.slice(0, 16).replace('T', ' ');
+  }
+  const date = new Date(typeof value === 'number' ? value * 1000 : value);
+  return Number.isNaN(date.getTime()) ? String(value) : formatApiMinute(date);
+}

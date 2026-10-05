@@ -8,6 +8,7 @@ import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import manifest from '../../manifest.json' with { type: 'json' };
 import pkg from '../../package.json' with { type: 'json' };
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
@@ -59,7 +60,7 @@ describe('built binary over stdio', () => {
     try {
       expect(client.getServerVersion()?.version).toBe(pkg.version);
       const { tools } = await client.listTools();
-      expect(tools).toHaveLength(9);
+      expect(tools.map(tool => tool.name)).toEqual(manifest.tools.map(tool => tool.name));
     } finally {
       await client.close();
     }

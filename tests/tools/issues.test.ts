@@ -47,8 +47,8 @@ describe('tideways_list_issues', () => {
         status: 'open',
         occurrences: 17000,
         occurrencesSinceLastRelease: 2147,
-        firstOccurred: '2026-09-01 19:13:19',
-        lastOccurred: '2026-09-30 12:43:50',
+        firstOccurred: '2026-09-01 19:13',
+        lastOccurred: '2026-09-30 12:43',
         environments: ['production'],
         services: ['web', 'worker'],
         durationMs: null,
@@ -84,11 +84,15 @@ describe('tideways_list_issues', () => {
 
   it('sends warnings and notices as levels of non-fatal issues', async () => {
     server = await startTestServer({
-      '/acme/shop/issues': { body: issues(0, { service: '__all' }) },
+      '/acme/shop/issues': {
+        body: { ...issues(0, { service: '__all' }), issues: [issue({ issueType: 'non-fatals' })] },
+      },
     });
     for (const type of ['warning', 'notice', 'deprecated', 'slowsql']) {
-      const result = await callTool(server, 'tideways_list_issues', { type });
-      expect((result.structuredContent as ListIssuesOutput).criteria.type).toBe(type);
+      const data = (await callTool(server, 'tideways_list_issues', { type }))
+        .structuredContent as ListIssuesOutput;
+      expect(data.criteria.type).toBe(type);
+      expect(data.issues[0]?.type).toBe(type);
     }
     const sent = server.api.requests.map(request => ({
       issueType: request.url.searchParams.get('issueType'),
