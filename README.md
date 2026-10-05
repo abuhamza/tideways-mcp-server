@@ -109,6 +109,7 @@ claude mcp add tideways -e TIDEWAYS_TOKEN=your-token -- docker run -i --rm -e TI
 | `tideways_get_performance` | How is the app doing in any window of up to 24 h within the last ~30 days? Totals, layers, top transactions |
 | `tideways_get_performance_summary` | Requests, errors and p95 in 15-minute buckets over up to 30 days |
 | `tideways_list_issues` | Which errors, slow SQL queries, deprecations, warnings or notices are open, resolved or ignored, in any service or transaction? |
+| `tideways_get_issue` | Where in the code does an issue fail, which transactions does it hit, and when did it start or stop? |
 | `tideways_search_traces` | Which individual requests were slow, in any transaction, and where did the time go? |
 | `tideways_get_history` | Day, week or month report for a past date |
 | `tideways_get_observations` | Configuration problems and code bottlenecks Tideways detected (e.g. N+1 queries) |
