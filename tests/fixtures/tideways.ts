@@ -133,11 +133,15 @@ export function issues(
   };
 }
 
-/** Issues page whose items name the given services, one array per issue. */
-export function issuesNaming(services: string[][], criteria: Record<string, unknown> = {}) {
+/** Issues v2 page whose items name the given services, one array per issue. */
+export function issuesNaming(
+  services: string[][],
+  criteria: Record<string, unknown> = {},
+  idPrefix = 'issue'
+) {
   return {
-    issues: services.map((names, i) => issue({ id: `issue-${i + 1}`, services: names })),
-    criteria: { ...issues(0).criteria, ...criteria },
+    ...issues(0, criteria, { totalPages: 1, totalItems: services.length }),
+    issues: services.map((names, i) => issue({ id: `${idPrefix}-${i + 1}`, services: names })),
   };
 }
 
