@@ -4,7 +4,8 @@ import * as z from 'zod/v4';
 import type { ToolContext } from '../context.js';
 import { TidewaysApiError, type TidewaysErrorKind } from '../tideways/errors.js';
 import { apiPath } from '../tideways/http.js';
-import { parseResponse, text } from '../tideways/parse.js';
+import { ALL_SERVICES, ISSUES_V2_ACCEPT, issuesV2Response } from '../tideways/issues.js';
+import { parseResponse } from '../tideways/parse.js';
 import { projectLabel, type ProjectRef } from '../tideways/projects.js';
 import {
   assertAnsweredScope,
@@ -16,21 +17,20 @@ import {
 } from './shared.js';
 import { stripQuery, TRACE_LIMIT, tracesResponse } from './traces.js';
 
-/** Issue types whose first open page names services. */
+/** Issue types whose first page of all services and statuses names services. */
 const SERVICE_ISSUE_TYPES = ['error', 'slowsql', 'deprecated'] as const;
 /** One call searches at most this many services. */
 const MAX_SEARCHED_SERVICES = 30;
 const CONCURRENT_SEARCHES = 4;
-/** Share of the hourly rate limit one search may spend, and requests it leaves for later calls. */
+/**
+ * Searches spend at most this share of the hourly rate limit less the reserve, and leave the
+ * reserve for later calls. The reserve exceeds the issue reads, so the whole call stays within
+ * the share.
+ */
 const RATE_LIMIT_SHARE = 0.1;
 const RATE_LIMIT_RESERVE = 10;
 /** Failures every further request would hit too; any other failure affects one service only. */
 const FATAL_ERRORS: ReadonlySet<TidewaysErrorKind> = new Set(['auth', 'forbidden', 'rate_limited']);
-
-const issuesResponse = z.object({
-  issues: z.array(z.object({ services: z.array(z.string()).default([]) })).default([]),
-  criteria: z.object({ environment: text, service: text }).optional(),
-});
 
 export const listServicesInput = z.strictObject({
   project: projectParam,
@@ -47,8 +47,8 @@ export const listServicesInput = z.strictObject({
     .describe(
       'One whole word of the app, API, worker or transaction to find (e.g. "voucher"). Searches ' +
         'the traces of each service for it (one request per service: at most ' +
-        `${MAX_SEARCHED_SERVICES} services, and no more than a tenth of the hourly rate limit) ` +
-        'and sorts the services by matching traces.'
+        `${MAX_SEARCHED_SERVICES} services, fewer when the hourly rate limit is small or nearly ` +
+        'used up) and sorts the services by matching traces.'
     ),
 });
 
@@ -68,7 +68,9 @@ export const listServicesOutput = z.object({
             'Pass as "service". A ":cli" suffix marks the CLI scripts and workers of the service ' +
               'named before it.'
           ),
-        issues: z.number().describe('How many of the open issues this call read name this service'),
+        issues: z
+          .number()
+          .describe('How many of the issues this call read (open and ignored) name this service'),
         matchingTraces: z
           .number()
           .nullable()
@@ -94,10 +96,10 @@ export const listServicesOutput = z.object({
       })
     )
     .describe(
-      'Services named by the newest open errors, slow SQL queries and deprecations (first page ' +
-        'of each), plus the default service; other services are missing, and the Tideways UI ' +
-        'service selector lists all. Sorted default first, then by issues; with "search", by ' +
-        'matchingTraces.'
+      'Services named by the newest open or ignored errors, slow SQL queries and deprecations ' +
+        'of all services (first page of each), plus the default service; other services are ' +
+        'missing, and the Tideways UI service selector lists all. Sorted default first, then by ' +
+        'issues; with "search", by matchingTraces.'
     ),
   search: z
     .object({
@@ -106,8 +108,8 @@ export const listServicesOutput = z.object({
       notSearched: z
         .number()
         .describe(
-          `Services left out: one call searches at most ${MAX_SEARCHED_SERVICES} services, no ` +
-            'more than a tenth of the hourly rate limit, and keeps ' +
+          `Services left out: one call searches at most ${MAX_SEARCHED_SERVICES} services, ` +
+            'stays within a tenth of the hourly rate limit and keeps ' +
             `${RATE_LIMIT_RESERVE} requests in reserve; search them with tideways_search_traces`
         ),
     })
@@ -203,14 +205,14 @@ export function registerListServicesTool(server: McpServer, ctx: ToolContext): v
     {
       title: 'List services',
       description:
-        'List the services of a project (web, APIs, workers, CLI) named by its open issues, the ' +
+        'List the services of a project (web, APIs, workers, CLI) named by its issues, the ' +
         'default service first. Call it when the user names an app, API or worker that is not a ' +
         'project, or a transaction that tideways_search_traces does not find in the default ' +
         'service, with "search" set to one word of it: each service is searched for that word ' +
-        'and the services are sorted by matching traces, so the first ones serve it. Costs 3 ' +
-        `requests, plus 1 per service searched: at most ${MAX_SEARCHED_SERVICES}, and no more ` +
-        'than a tenth of the hourly rate limit. Only services named by the newest open issues ' +
-        'are listed; the Tideways UI service selector lists all.',
+        'and the services are sorted by matching traces, so the first ones serve it. Costs 4 ' +
+        `requests, plus 1 per service searched: at most ${MAX_SEARCHED_SERVICES}, fewer when ` +
+        'the hourly rate limit is small or nearly used up. Only services named by the newest ' +
+        'open or ignored issues are listed; the Tideways UI service selector lists all.',
       inputSchema: listServicesInput,
       outputSchema: listServicesOutput,
       annotations: READ_ONLY_ANNOTATIONS,
@@ -218,25 +220,36 @@ export function registerListServicesTool(server: McpServer, ctx: ToolContext): v
     async ({ project, environment, search }) => {
       const ref = await ctx.projects.resolve(project);
       const label = projectLabel(ref);
-      const pages = await Promise.all(
-        SERVICE_ISSUE_TYPES.map(async issueType => {
-          const body = await ctx.http.get(apiPath(ref.organization, ref.project, 'issues'), {
-            query: { issueType, status: 'open', env: environment ?? ctx.defaults.environment },
-            scope: 'errors',
-            resource: `${issueType} issues of ${label}`,
-          });
-          const parsed = parseResponse(issuesResponse, body, 'issues');
-          assertAnsweredScope(ctx, { environment }, parsed.criteria ?? {}, {
-            checkService: false,
-          });
-          return parsed;
-        })
-      );
+      const readIssues = async (
+        issueType: (typeof SERVICE_ISSUE_TYPES)[number],
+        service: string | undefined
+      ) => {
+        const body = await ctx.http.get(apiPath(ref.organization, ref.project, 'issues'), {
+          query: {
+            issueType,
+            status: 'all',
+            env: environment ?? ctx.defaults.environment,
+            s: service,
+          },
+          accept: ISSUES_V2_ACCEPT,
+          scope: 'errors',
+          resource: `${issueType} issues of ${label}`,
+        });
+        const parsed = parseResponse(issuesV2Response, body, 'issues');
+        assertAnsweredScope(ctx, { environment }, parsed.criteria ?? {}, { checkService: false });
+        return parsed;
+      };
+      // With s=__all, criteria.service is "__all"; the read without s names the default service.
+      const pages = await Promise.all([
+        readIssues('error', undefined),
+        ...SERVICE_ISSUE_TYPES.map(issueType => readIssues(issueType, ALL_SERVICES)),
+      ]);
 
-      const defaultService = pages.find(page => page.criteria?.service)?.criteria?.service ?? null;
+      const defaultService = pages[0].criteria?.service ?? null;
       const mentions = new Map<string, number>();
       if (defaultService !== null) mentions.set(defaultService, 0);
-      for (const issue of pages.flatMap(page => page.issues)) {
+      const issues = new Map(pages.flatMap(page => page.issues).map(issue => [issue.id, issue]));
+      for (const issue of issues.values()) {
         for (const name of new Set(issue.services)) {
           mentions.set(name, (mentions.get(name) ?? 0) + 1);
         }
@@ -260,10 +273,8 @@ export function registerListServicesTool(server: McpServer, ctx: ToolContext): v
       if (search !== undefined) {
         const rateLimit = ctx.http.lastRateLimit();
         const budget = rateLimit
-          ? Math.min(
-              Math.floor(rateLimit.limit * RATE_LIMIT_SHARE),
-              rateLimit.remaining - RATE_LIMIT_RESERVE
-            )
+          ? Math.min(Math.floor(rateLimit.limit * RATE_LIMIT_SHARE), rateLimit.remaining) -
+            RATE_LIMIT_RESERVE
           : Infinity;
         const searched = services.slice(0, Math.max(0, Math.min(MAX_SEARCHED_SERVICES, budget)));
         const results = await mapLimited(searched, CONCURRENT_SEARCHES, service =>
