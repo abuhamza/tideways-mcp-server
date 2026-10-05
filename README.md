@@ -134,7 +134,7 @@ Environment variables; empty values count as unset. The server does not load `.e
 ## Good to know
 
 - All times are UTC, `YYYY-MM-DD HH:mm`. The API rate limit is per Tideways organization and clock hour; its size depends on the plan, and all tokens and projects of the organization share it.
-- Tools read the project's default service unless you name one; `tideways_list_issues` reads all services. The API cannot list services; `tideways_list_services` finds them through open issues, and its `search` costs one request per service.
+- Tools read the project's default service unless you name one; `tideways_list_issues` reads all services. The API cannot list services; `tideways_list_services` finds them through the issues of all services, and its `search` costs one request per service.
 - `tideways_search_traces` returns 30 traces per call, or up to 100 with `limit`.
 - Limits of the Tideways API: history for production and the default service only, issues 10 per page, and no trace filter by bottleneck (an N+1 observation's link opens the affected traces in Tideways).
 
