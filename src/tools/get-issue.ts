@@ -216,8 +216,6 @@ export function registerGetIssueTool(server: McpServer, ctx: ToolContext): void 
       const output: GetIssueOutput = {
         project: label,
         ...issueSummary(issue, type, MAX_MESSAGE_LENGTH),
-        firstOccurred: toApiMinute(issue.firstOccurred),
-        lastOccurred: toApiMinute(issue.lastOccurred),
         lastReopened: toApiMinute(issue.lastReopened),
         transactions: issue.transactions.map(t => ({ name: t.name ?? UNNAMED, count: t.count })),
         occurrenceHistogram: histogram

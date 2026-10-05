@@ -100,8 +100,8 @@ export function issue(overrides: Record<string, unknown> = {}) {
     source: 'src/Service/Cart.php:649',
     occurrences: 17000,
     occurrencesSinceLastRelease: 2147,
-    firstOccurred: '2026-09-01 19:13:19',
-    lastOccurred: '2026-09-30 12:43:50',
+    firstOccurred: '2026-09-01T21:13:19+02:00',
+    lastOccurred: '2026-09-30T14:43:50+02:00',
     status: 'open',
     environments: ['production'],
     services: ['web', 'worker'],
@@ -139,7 +139,7 @@ export function stackFrame(index: number) {
     file: `src/Service/Cart${index}.php`,
     line: 100 + index,
     function: `App\\Service\\Cart${index}::load`,
-    previousException: false,
+    previousException: null,
   };
 }
 
@@ -148,7 +148,7 @@ export function issueDetail(overrides: Record<string, unknown> = {}) {
   return {
     issue: {
       ...issue({ id: 'issue-1' }),
-      lastReopened: '2026-09-20 08:15:00',
+      lastReopened: '2026-09-20T10:15:00+02:00',
       transactions: [
         { name: 'App\\Controller\\CartController::show', count: 1200 },
         { name: 'App\\Controller\\CheckoutController::pay', count: 35 },
@@ -157,12 +157,12 @@ export function issueDetail(overrides: Record<string, unknown> = {}) {
         retentionDays: 30,
         totalOccurrences: 17000,
         buckets: [
-          { start: '2026-09-30 10:00:00', end: '2026-09-30 11:00:00', count: 4 },
-          { start: '2026-09-30 11:00:00', end: '2026-09-30 12:00:00', count: 0 },
+          { start: '2026-09-30T12:00:00+02:00', end: '2026-09-30T13:00:00+02:00', count: 4 },
+          { start: '2026-09-30T13:00:00+02:00', end: '2026-09-30T14:00:00+02:00', count: 0 },
         ],
       },
       latestOccurrence: {
-        time: '2026-09-30 12:43:50',
+        time: '2026-09-30T14:43:50+02:00',
         message: 'SQLSTATE[HY000]: example failure',
         type: 'PDOException',
         code: 'HY000',

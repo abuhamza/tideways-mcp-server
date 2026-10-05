@@ -15,6 +15,7 @@ import {
 } from '../tideways/issues.js';
 import { parseResponse } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
+import { toApiMinute } from '../tideways/time.js';
 import {
   assertAnsweredScope,
   detailParam,
@@ -134,8 +135,8 @@ export function issueSummary(issue: IssueV2, type: IssueType, maxMessageLength: 
     status: issue.status,
     occurrences: issue.occurrences,
     occurrencesSinceLastRelease: issue.occurrencesSinceLastRelease ?? null,
-    firstOccurred: issue.firstOccurred,
-    lastOccurred: issue.lastOccurred,
+    firstOccurred: toApiMinute(issue.firstOccurred),
+    lastOccurred: toApiMinute(issue.lastOccurred),
     environments: issue.environments,
     services: issue.services,
     durationMs: type === 'slowsql' ? slowSqlDurationMs(issue) : null,
