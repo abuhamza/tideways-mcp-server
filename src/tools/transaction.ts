@@ -14,6 +14,8 @@ import {
   criteriaOutput,
   environmentParam,
   jsonResult,
+  layerAverages,
+  layerAveragesOutput,
   projectParam,
   READ_ONLY_ANNOTATIONS,
   round,
@@ -95,26 +97,24 @@ export const getTransactionInput = z.strictObject({
   service: serviceParam,
 });
 
-const layersOutput = z
-  .record(z.string(), z.number())
-  .describe(
-    'Average ms per request in each layer: sql, http, cache, al = autoloading, ct = compiling, ' +
-      'io = file I/O, dns, runq = waiting for CPU'
-  );
-
 export const getTransactionOutput = z.object({
   project: z.string(),
   id: z.number(),
   name: z.string(),
   criteria: criteriaOutput,
-  bucketMinutes: z.number().describe('Minutes covered by each timeline point'),
+  bucketMinutes: z
+    .number()
+    .nullable()
+    .describe(
+      'Minutes covered by each timeline point; null when the timeline is too short to tell'
+    ),
   totals: z.object({
     requests: z.number(),
     errorRatePercent: z.number(),
     p95Ms: z.number(),
     averageMs: z.number(),
     medianMs: z.number(),
-    downstreamAverageMs: layersOutput,
+    downstreamAverageMs: layerAveragesOutput,
     histogram: z
       .object({
         requests: z.number(),
@@ -129,7 +129,7 @@ export const getTransactionOutput = z.object({
               value: z.number().nullable(),
             })
           )
-          .describe('Named values Tideways marks on the histogram'),
+          .describe('Reference points Tideways draws on the histogram, each named and labelled'),
       })
       .nullable()
       .describe('Response-time distribution of the window; null when Tideways sends none'),
@@ -145,21 +145,18 @@ export const getTransactionOutput = z.object({
       p95Ms: z.number(),
       medianMs: z.number(),
       averageMs: z.number(),
-      downstreamAverageMs: layersOutput,
+      downstreamAverageMs: layerAveragesOutput,
     })
   ),
 });
 
 export type GetTransactionOutput = z.infer<typeof getTransactionOutput>;
 
-const averages = (layers: Record<string, { average: number }>): Record<string, number> =>
-  Object.fromEntries(Object.entries(layers).map(([layer, { average }]) => [layer, average]));
-
-/** Minutes between the first two timeline keys; one point (or none) falls back to the request. */
-function bucketMinutes(times: string[], minutes: number): number {
+/** Minutes between the first two timeline keys; with fewer points known only up to 60 minutes. */
+function bucketMinutes(times: string[], minutes: number): number | null {
   const [first, second] = times.map(parseApiMinute);
   if (first && second) return (second.getTime() - first.getTime()) / 60_000;
-  return Math.max(1, Math.ceil(minutes / 60));
+  return minutes <= 60 ? 1 : null;
 }
 
 export function registerGetTransactionTool(server: McpServer, ctx: ToolContext): void {
@@ -187,7 +184,12 @@ export function registerGetTransactionTool(server: McpServer, ctx: ToolContext):
           resource: `transaction ${transactionId} of ${label}`,
         })
         .catch((error: unknown) => {
-          if (error instanceof TidewaysApiError && error.kind === 'not_found') {
+          // An unknown ID answers 404 with an empty message; an unknown project says "Not Found".
+          if (
+            error instanceof TidewaysApiError &&
+            error.kind === 'not_found' &&
+            error.apiMessage === undefined
+          ) {
             throw new Error(
               `Transaction ${transactionId} not found in ${label}; take IDs from ` +
                 'transactions[].id of tideways_get_performance.'
@@ -215,7 +217,7 @@ export function registerGetTransactionTool(server: McpServer, ctx: ToolContext):
           p95Ms: total?.response_time ?? 0,
           averageMs: total?.average ?? 0,
           medianMs: total?.median ?? 0,
-          downstreamAverageMs: averages(total?.downstream ?? {}),
+          downstreamAverageMs: layerAverages(total?.downstream ?? {}),
           histogram: histogram
             ? {
                 requests: histogram.total,
@@ -240,7 +242,7 @@ export function registerGetTransactionTool(server: McpServer, ctx: ToolContext):
           p95Ms: bucket.percentile_95p,
           medianMs: bucket.median,
           averageMs: bucket.average,
-          downstreamAverageMs: averages(bucket.downstream),
+          downstreamAverageMs: layerAverages(bucket.downstream),
         })),
       };
       return jsonResult(output);

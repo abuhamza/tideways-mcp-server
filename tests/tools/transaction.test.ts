@@ -154,11 +154,21 @@ describe('tideways_get_transaction', () => {
     expect(result.isError).toBeUndefined();
     expect(result.structuredContent as GetTransactionOutput).toMatchObject({
       name: '(unnamed)',
-      bucketMinutes: 2,
+      bucketMinutes: null,
       criteria: { start: null, end: null, environment: null, service: null },
       totals: { requests: 0, errorRatePercent: 0, downstreamAverageMs: {}, histogram: null },
       timeline: [],
     });
+  });
+
+  it('keeps the project hint when the project itself is not found', async () => {
+    server = await startTestServer({
+      '/acme/shop/transaction/101': { status: 404, body: { status: 404, msg: 'Not Found' } },
+    });
+    const result = await callTool(server, 'tideways_get_transaction', { transactionId: 101 });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain('HTTP 404: Not Found');
+    expect(textOf(result)).toContain('tideways_list_projects');
   });
 
   it('targets another project after validating it against the token', async () => {
