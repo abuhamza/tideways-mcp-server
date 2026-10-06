@@ -167,8 +167,8 @@ The token is read from the environment and never logged, and trace URLs are retu
 
 ```bash
 npm ci
-npm run typecheck && npm run lint && npm run format:check && npm test   # the gate
-npm run build && npm run inspect                                        # try the tools in the MCP Inspector
+npm run check                      # the gate: typecheck, lint, format, tests, commit messages
+npm run build && npm run inspect   # try the tools in the MCP Inspector
 ```
 
 Architecture, invariants and how to add a tool: [CLAUDE.md](CLAUDE.md). Commits follow [Conventional Commits](https://www.conventionalcommits.org/).

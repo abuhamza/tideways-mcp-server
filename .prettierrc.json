@@ -6,5 +6,15 @@
   "tabWidth": 2,
   "useTabs": false,
   "bracketSpacing": true,
-  "arrowParens": "avoid"
+  "arrowParens": "avoid",
+  "overrides": [
+    {
+      "files": ["manifest.json", "server.json"],
+      "options": { "parser": "json-stringify" }
+    },
+    {
+      "files": "*.{yml,yaml}",
+      "options": { "singleQuote": false }
+    }
+  ]
 }
