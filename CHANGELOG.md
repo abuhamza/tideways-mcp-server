@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.1.0](https://github.com/abuhamza/tideways-mcp-server/compare/v2.0.0...v2.1.0) (2026-10-06)
+
+
+### Features
+
+* add limit and transaction filter to tideways_search_traces ([#25](https://github.com/abuhamza/tideways-mcp-server/issues/25)) ([e6a37d0](https://github.com/abuhamza/tideways-mcp-server/commit/e6a37d093b4ab3bcf9d9122c2727ddee79ab9a32))
+* add tideways_get_issue for an issue's stack trace, transactions and history ([#28](https://github.com/abuhamza/tideways-mcp-server/issues/28)) ([8add6c2](https://github.com/abuhamza/tideways-mcp-server/commit/8add6c26026f0abc1cf684fb06e0e7e3b3ed1497))
+* add tideways_get_transaction for one transaction's timeline and histogram ([#26](https://github.com/abuhamza/tideways-mcp-server/issues/26)) ([9b014c2](https://github.com/abuhamza/tideways-mcp-server/commit/9b014c2770f8cc61124e3544cb227f8b513fbad0))
+* list issues of all services, with totals, warnings and notices ([#23](https://github.com/abuhamza/tideways-mcp-server/issues/23)) ([b46940f](https://github.com/abuhamza/tideways-mcp-server/commit/b46940f8741a0460f80158e5eeec9df54c974642))
+* list services from open and ignored issues of all services ([#27](https://github.com/abuhamza/tideways-mcp-server/issues/27)) ([949c804](https://github.com/abuhamza/tideways-mcp-server/commit/949c80445386d930ae3d5d030813faf79e917022))
+
+
+### Bug Fixes
+
+* say the rate limit is per organization, not per token ([#22](https://github.com/abuhamza/tideways-mcp-server/issues/22)) ([a88dffb](https://github.com/abuhamza/tideways-mcp-server/commit/a88dffbf5d83f74d759c8d495be299091fc2061f))
+
 ## [2.0.0](https://github.com/abuhamza/tideways-mcp-server/compare/v1.2.0...v2.0.0) (2026-10-02)
 
 
