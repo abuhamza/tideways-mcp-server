@@ -7,7 +7,9 @@ import { apiPath } from '../tideways/http.js';
 import { ALL_SERVICES, ISSUES_V2_ACCEPT, issuesV2Response } from '../tideways/issues.js';
 import { parseResponse } from '../tideways/parse.js';
 import { projectLabel, type ProjectRef } from '../tideways/projects.js';
+import { toApiMinute } from '../tideways/time.js';
 import {
+  apiMinute,
   assertAnsweredScope,
   environmentParam,
   jsonResult,
@@ -84,7 +86,7 @@ export const listServicesOutput = z.object({
           .object({
             transaction: z.string().nullable(),
             url: z.string().nullable().describe('Request URL without query string'),
-            date: z.string().nullable().describe('UTC "YYYY-MM-DD HH:mm"'),
+            date: apiMinute.nullable().describe('UTC "YYYY-MM-DD HH:mm"'),
           })
           .nullable()
           .optional()
@@ -193,7 +195,7 @@ async function searchService(
       ? {
           transaction: newest.transaction_name,
           url: newest.http?.url ? stripQuery(newest.http.url) : null,
-          date: newest.date,
+          date: toApiMinute(newest.date),
         }
       : null,
     searchError: null,

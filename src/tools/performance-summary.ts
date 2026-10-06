@@ -7,6 +7,7 @@ import { num, parseResponse, phpMap, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import { parseApiMinute } from '../tideways/time.js';
 import {
+  apiMinute,
   assertAnsweredScope,
   byKey,
   criteriaOutput,
@@ -51,8 +52,8 @@ export const performanceSummaryOutput = z.object({
   criteria: criteriaOutput,
   window: z.object({
     hours: z.number(),
-    from: z.string().nullable().describe('First bucket included (UTC)'),
-    to: z.string().nullable().describe('Last bucket included (UTC)'),
+    from: apiMinute.nullable().describe('First bucket included (UTC)'),
+    to: apiMinute.nullable().describe('Last bucket included (UTC)'),
   }),
   totals: z.object({
     requests: z.number(),
@@ -62,7 +63,7 @@ export const performanceSummaryOutput = z.object({
   }),
   buckets: z
     .array(
-      z.object({ time: z.string(), requests: z.number(), errors: z.number(), p95Ms: z.number() })
+      z.object({ time: apiMinute, requests: z.number(), errors: z.number(), p95Ms: z.number() })
     )
     .describe('15-minute buckets, oldest first; a bucket keyed 12:00 covers 12:00-12:14 UTC'),
   pendingBuckets: z

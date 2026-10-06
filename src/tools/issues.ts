@@ -17,6 +17,7 @@ import { parseResponse } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import { toApiMinute } from '../tideways/time.js';
 import {
+  apiMinute,
   assertAnsweredScope,
   detailParam,
   environmentParam,
@@ -89,8 +90,8 @@ export const listIssuesOutput = z.object({
         .number()
         .nullable()
         .describe('Occurrences since the last release marker'),
-      firstOccurred: z.string().nullable(),
-      lastOccurred: z.string().nullable(),
+      firstOccurred: apiMinute.nullable(),
+      lastOccurred: apiMinute.nullable(),
       environments: z.array(z.string()),
       services: z.array(z.string()),
       durationMs: z

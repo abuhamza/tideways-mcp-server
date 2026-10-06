@@ -8,6 +8,7 @@ import { num, parseResponse, phpMap, phpObject, text } from '../tideways/parse.j
 import { projectLabel } from '../tideways/projects.js';
 import { parseApiMinute } from '../tideways/time.js';
 import {
+  apiMinute,
   apiMinuteParam,
   assertAnsweredScope,
   byKey,
@@ -138,7 +139,7 @@ export const getTransactionOutput = z.object({
   }),
   timeline: z.array(
     z.object({
-      time: z.string().describe('Start of the bucket, UTC'),
+      time: apiMinute.describe('Start of the bucket, UTC'),
       requests: z.number(),
       errors: z.number(),
       responseTimeTargetExceeded: z

@@ -5,8 +5,11 @@ import type { ToolContext } from '../context.js';
 import { apiPath } from '../tideways/http.js';
 import { num, parseResponse, phpMap, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
+import { toApiMinute } from '../tideways/time.js';
 import {
   apiDateParam,
+  apiDate,
+  apiMinute,
   byKey,
   detailParam,
   jsonResult,
@@ -57,8 +60,8 @@ export const getHistoryOutput = z.object({
   project: z.string(),
   dateRange: z
     .object({
-      start: z.string().nullable(),
-      end: z.string().nullable(),
+      start: apiMinute.nullable(),
+      end: apiMinute.nullable(),
       granularity: z.string().nullable(),
     })
     .describe("Report boundaries in the organization's local calendar (timeline keys are UTC)"),
@@ -90,7 +93,12 @@ export const getHistoryOutput = z.object({
     .describe(`Top ${TOP_TRANSACTIONS} transactions by impact`),
   timeline: z
     .array(
-      z.object({ time: z.string(), requests: z.number(), errors: z.number(), p95Ms: z.number() })
+      z.object({
+        time: apiMinute.or(apiDate),
+        requests: z.number(),
+        errors: z.number(),
+        p95Ms: z.number(),
+      })
     )
     .describe(
       'Hourly (UTC) for a day; daily (UTC date, max p95) for a week or month. The first and last ' +
@@ -179,8 +187,8 @@ export function registerGetHistoryTool(server: McpServer, ctx: ToolContext): voi
       const output: GetHistoryOutput = {
         project: label,
         dateRange: {
-          start: parsed.date_range?.start ?? null,
-          end: parsed.date_range?.end ?? null,
+          start: toApiMinute(parsed.date_range?.start),
+          end: toApiMinute(parsed.date_range?.end),
           granularity: parsed.date_range?.granularity ?? granularity,
         },
         report: {

@@ -9,6 +9,7 @@ import { num, parseResponse, phpMap, phpObject, text } from '../tideways/parse.j
 import { projectLabel } from '../tideways/projects.js';
 import { toApiMinute } from '../tideways/time.js';
 import {
+  apiMinute,
   detailParam,
   jsonResult,
   LARGE_RESULT_META,
@@ -98,9 +99,9 @@ export const getIssueOutput = z.object({
     .number()
     .describe('All occurrences since firstOccurred, not limited to any period'),
   occurrencesSinceLastRelease: z.number().nullable(),
-  firstOccurred: z.string().nullable(),
-  lastOccurred: z.string().nullable(),
-  lastReopened: z.string().nullable(),
+  firstOccurred: apiMinute.nullable(),
+  lastOccurred: apiMinute.nullable(),
+  lastReopened: apiMinute.nullable(),
   environments: z.array(z.string()),
   services: z.array(z.string()),
   durationMs: z
@@ -115,14 +116,14 @@ export const getIssueOutput = z.object({
       retentionDays: z.number().nullable(),
       total: z.number().nullable(),
       buckets: z.array(
-        z.object({ start: z.string().nullable(), end: z.string().nullable(), count: z.number() })
+        z.object({ start: apiMinute.nullable(), end: apiMinute.nullable(), count: z.number() })
       ),
     })
     .nullable()
     .describe('Occurrences per time bucket over the retention period'),
   latestOccurrence: z
     .object({
-      time: z.string().nullable(),
+      time: apiMinute.nullable(),
       message: z.string().nullable(),
       type: z.string().nullable(),
       code: z.string().nullable(),

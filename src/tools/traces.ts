@@ -5,8 +5,9 @@ import type { ToolContext } from '../context.js';
 import { apiPath } from '../tideways/http.js';
 import { num, parseResponse, phpObject, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
-import { parseApiMinute } from '../tideways/time.js';
+import { parseApiMinute, toApiMinute } from '../tideways/time.js';
 import {
+  apiMinute,
   apiMinuteParam,
   assertAnsweredScope,
   detailParam,
@@ -120,7 +121,7 @@ export const searchTracesOutput = z.object({
       id: z.string(),
       transaction: z.string().nullable(),
       title: z.string().nullable().describe('HTTP method and path'),
-      date: z.string().nullable().describe('UTC "YYYY-MM-DD HH:mm"'),
+      date: apiMinute.nullable().describe('UTC "YYYY-MM-DD HH:mm"'),
       responseTimeMs: z.number(),
       memoryKb: z.number(),
       server: z.string().nullable(),
@@ -228,7 +229,7 @@ export function registerSearchTracesTool(server: McpServer, ctx: ToolContext): v
           id: trace.id,
           transaction: trace.transaction_name,
           title: trace.title,
-          date: trace.date,
+          date: toApiMinute(trace.date),
           responseTimeMs: trace.response_time_ms,
           memoryKb: trace.memory_kb,
           server: trace.server,

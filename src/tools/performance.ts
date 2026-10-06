@@ -6,6 +6,7 @@ import { apiPath } from '../tideways/http.js';
 import { num, parseResponse, phpMap, text } from '../tideways/parse.js';
 import { projectLabel } from '../tideways/projects.js';
 import {
+  apiMinute,
   apiMinuteParam,
   assertAnsweredScope,
   byKey,
@@ -121,7 +122,7 @@ export const performanceOutput = z.object({
     .describe('Top transactions by impact; the API returns at most 20'),
   timeline: z.array(
     z.object({
-      time: z.string(),
+      time: apiMinute,
       requests: z.number(),
       errors: z.number(),
       p95Ms: z.number(),

@@ -12,13 +12,13 @@ describe('tideways_get_history', () => {
     server = undefined;
   });
 
-  it('returns the day report with an hourly timeline and top 20 transactions', async () => {
+  it('returns the day report with minute date range, hourly timeline and top 20 transactions', async () => {
     server = await startTestServer({ '/acme/shop/history/2026-09-29': { body: history('day') } });
     const result = await callTool(server, 'tideways_get_history', { date: '2026-09-29' });
     const data = result.structuredContent as GetHistoryOutput;
     expect(data.dateRange).toEqual({
-      start: '2026-09-29 00:00:00',
-      end: '2026-09-29 23:59:59',
+      start: '2026-09-29 00:00',
+      end: '2026-09-29 23:59',
       granularity: 'day',
     });
     expect(data.report).toEqual({ totalRequests: 8600, errorRatePercent: 0.16, p95Ms: 341 });
