@@ -61,6 +61,26 @@ Add to the client's MCP configuration (Cursor: `~/.cursor/mcp.json`; Gemini CLI:
 </details>
 
 <details>
+<summary><b>OpenCode</b></summary>
+
+Add to `opencode.json` in the project, or to `~/.config/opencode/opencode.json` for all projects. `{env:TIDEWAYS_TOKEN}` reads the token from your shell's environment.
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "tideways": {
+      "type": "local",
+      "command": ["npx", "-y", "tideways-mcp-server"],
+      "environment": { "TIDEWAYS_TOKEN": "{env:TIDEWAYS_TOKEN}" }
+    }
+  }
+}
+```
+
+</details>
+
+<details>
 <summary><b>VS Code</b></summary>
 
 Add to `.vscode/mcp.json`, or run **MCP: Open User Configuration** for all workspaces. VS Code asks for the token on first start and stores it.
