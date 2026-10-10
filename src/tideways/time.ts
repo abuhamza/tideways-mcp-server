@@ -1,5 +1,7 @@
-const API_MINUTE_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
-const API_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+/** The API's minute format, "YYYY-MM-DD HH:mm". */
+export const API_MINUTE_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+/** The API's date format, "YYYY-MM-DD". */
+export const API_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Format a Date as the API's minute format, "YYYY-MM-DD HH:mm", in UTC. */
 export function formatApiMinute(date: Date): string {

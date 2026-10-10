@@ -1,7 +1,13 @@
 import * as z from 'zod/v4';
 
 import type { ToolContext } from '../context.js';
-import { parseApiDate, parseApiMinute } from '../tideways/time.js';
+import {
+  API_DATE_PATTERN,
+  API_MINUTE_PATTERN,
+  parseApiDate,
+  parseApiMinute,
+  toApiMinute,
+} from '../tideways/time.js';
 
 export const READ_ONLY_ANNOTATIONS = {
   readOnlyHint: true,
@@ -67,6 +73,12 @@ export const apiDateParam = z.string().refine(value => parseApiDate(value) !== u
   message: 'Use "YYYY-MM-DD", e.g. "2026-09-29"',
 });
 
+/** A time in tool output, "YYYY-MM-DD HH:mm" (UTC unless the field says otherwise). */
+export const apiMinute = z.string().regex(API_MINUTE_PATTERN).describe('"YYYY-MM-DD HH:mm"');
+
+/** A day in tool output, "YYYY-MM-DD". */
+export const apiDate = z.string().regex(API_DATE_PATTERN).describe('"YYYY-MM-DD"');
+
 export const rawOutput = z
   .unknown()
   .optional()
@@ -74,8 +86,8 @@ export const rawOutput = z
 
 export const criteriaOutput = z
   .object({
-    start: z.string().nullable(),
-    end: z.string().nullable(),
+    start: apiMinute.nullable(),
+    end: apiMinute.nullable(),
     environment: z.string().nullable(),
     service: z.string().nullable(),
   })
@@ -106,8 +118,8 @@ export interface ApiCriteria {
 
 export function toCriteria(criteria: ApiCriteria | undefined): z.infer<typeof criteriaOutput> {
   return {
-    start: criteria?.start ?? null,
-    end: criteria?.end ?? null,
+    start: toApiMinute(criteria?.start),
+    end: toApiMinute(criteria?.end),
     environment: criteria?.environment ?? null,
     service: criteria?.service ?? null,
   };
