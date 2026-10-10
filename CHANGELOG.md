@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/abuhamza/tideways-mcp-server/compare/v2.1.0...v2.1.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* report history date ranges in minutes and validate output times ([#30](https://github.com/abuhamza/tideways-mcp-server/issues/30)) ([1f83002](https://github.com/abuhamza/tideways-mcp-server/commit/1f83002bb1b472d3f449eae6c4b04169978f6d31))
+
 ## [2.1.0](https://github.com/abuhamza/tideways-mcp-server/compare/v2.0.0...v2.1.0) (2026-10-06)
 
 
