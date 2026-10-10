@@ -1,0 +1,6 @@
+# Written by tools (release-please, npm, the build), not by hand
+CHANGELOG.md
+package-lock.json
+.release-please-manifest.json
+dist/
+coverage/

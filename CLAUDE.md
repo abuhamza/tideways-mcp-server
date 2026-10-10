@@ -4,7 +4,7 @@ Read-only MCP server (stdio) for the Tideways REST API, on the MCP TypeScript SD
 
 ## Gate
 
-Before every commit: `npm run typecheck && npm run lint && npm run format:check && npm test`. Commits follow Conventional Commits (commitlint in CI); release-please derives versions from them: `fix` → patch, `feat` → minor, `!` or `BREAKING CHANGE:` → major.
+Before every commit and push: `npm run check` (typecheck, lint, format check, tests, and commitlint over the commits since `origin/main`, as in CI). Commits follow Conventional Commits (commitlint in CI); release-please derives versions from them: `fix` → patch, `feat` → minor, `!` or `BREAKING CHANGE:` → major.
 
 ## Invariants
 
