@@ -3,7 +3,7 @@
   "manifest_version": "0.3",
   "name": "tideways-mcp-server",
   "display_name": "Tideways",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Query Tideways PHP performance monitoring data (performance, issues, traces, history) from your AI assistant.",
   "long_description": "Read-only MCP server for [Tideways](https://tideways.com/). Its tools cover the token's projects and services, per-minute performance and top transactions, the timeline of one transaction, 15-minute summaries over 30 days, error, slow-SQL, deprecation, warning and notice issues with their stack traces, individual traces, day/week/month reports and automatic configuration and bottleneck observations.",
   "author": {
