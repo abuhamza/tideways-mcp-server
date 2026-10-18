@@ -80,14 +80,16 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false # no dependency cache in a job that can mint an OIDC token
 
-      # Node 24 LTS ships npm 11.x (24.21.0 -> npm 11.19.0), which already satisfies this; kept as a guard.
-      - name: Ensure npm >= 11.5.1
+      # Trusted publishing needs npm >= 11.5.1; Node 24 LTS ships npm 11.x (24.21.0 -> npm 11.19.0).
+      # Fail instead of installing npm, so the job runs no unpinned global install.
+      - name: Check npm >= 11.5.1
         run: |
           current="$(npm --version)"
           if [ "$(printf '%s\n' 11.5.1 "$current" | sort -V | head -n1)" != "11.5.1" ]; then
-            npm install -g npm@^11.5.1
+            echo "::error::npm $current is older than 11.5.1, which trusted publishing needs. Use a Node 24 release that ships npm >= 11.5.1." >&2
+            exit 1
           fi
-          npm --version
+          echo "npm $current"
 
       - run: npm ci --ignore-scripts
       - run: npm run build
