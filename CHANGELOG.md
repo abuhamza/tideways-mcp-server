@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/abuhamza/tideways-mcp-server/compare/v2.1.1...v2.1.2) (2026-10-18)
+
+
+### Bug Fixes
+
+* **deps:** update the MCP SDK to 2.3.1 and zod to 4.6.6 ([#33](https://github.com/abuhamza/tideways-mcp-server/issues/33)) ([6e1ee02](https://github.com/abuhamza/tideways-mcp-server/commit/6e1ee02d54ec0476d4a7cbb9a317072d6550a0c7))
+
 ## [2.1.1](https://github.com/abuhamza/tideways-mcp-server/compare/v2.1.0...v2.1.1) (2026-10-10)
 
 
